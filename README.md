@@ -60,22 +60,34 @@ node server.js
 Truy cập trình duyệt tại: **http://localhost:3000**
 
 ### Cách 2: Mở trực tiếp file HTML
-Bạn có thể nhấp đúp trực tiếp vào file `index.html` trong File Explorer để mở bằng Chrome, Edge hoặc bất kỳ trình duyệt hiện đại nào.
+Bạn có thể nhấp đúp trực tiếp vào file [web/index.html](file:///c:/Users/mngoc/Downloads/web%20mp/web/index.html) để học viên luyện viết, hoặc [admin/index.html](file:///c:/Users/mngoc/Downloads/web%20mp/admin/index.html) để vào trang quản trị viên.
 
 ---
 
-## 📁 Cấu Trúc Thư Mục
+## 📁 Cấu Trúc Thư Mục Được Phân Chia Rõ Ràng
 ```
 web mp/
-├── index.html        # Trang HTML chính với giao diện và modal hoàn chỉnh
-├── server.js         # Máy chủ HTTP cục bộ nhẹ nhàng (Node.js thuần)
-├── package.json      # Thiết lập khởi chạy lệnh npm start/dev
-├── README.md         # Tài liệu hướng dẫn sử dụng
-├── css/
-│   └── style.css     # Thiết kế hệ thống màu warm paper, hiệu ứng mượt mà
-└── js/
-    ├── storage.js    # Quản lý bộ nhớ localStorage và polyfill window.storage
-    ├── data.js       # Dữ liệu 12 đề bài, ngân hàng ý tưởng và cấu trúc câu
-    ├── ai-service.js # Tích hợp Claude API và bộ máy phản hồi offline
-    └── app.js        # Logic điều khiển, render giao diện, đồng hồ và dashboard
+├── web/                  # Giao diện học viên luyện viết IELTS
+│   ├── index.html        # Trang chính của học viên
+│   ├── css/
+│   │   └── style.css     # Giao diện warm paper, responsive
+│   └── js/
+│       └── app.js        # Logic luyện viết Scaffold & Dashboard hoa hướng dương
+│
+├── admin/                # Giao diện quản trị viên
+│   ├── index.html        # Trang quản trị (Bảo mật bằng mã PIN)
+│   ├── css/
+│   │   └── admin.css     # Bảng điều khiển quản trị viên
+│   └── js/
+│       └── admin.js      # Quản lý đề bài, ý tưởng, bài nộp học viên
+│
+├── shared/               # Module dùng chung cho cả Web và Admin
+│   └── js/
+│       ├── storage.js    # Quản lý lưu trữ localStorage & tự động lưu nháp
+│       ├── data.js       # DataManager, 12 đề thi gốc và ngân hàng ý tưởng
+│       └── ai-service.js # Tích hợp Claude 3.5 Sonnet & Offline AI Engine
+│
+├── server.js             # Máy chủ Node.js hỗ trợ điều hướng tự động
+├── package.json          # Thiết lập npm start / dev
+└── README.md             # Tài liệu hướng dẫn sử dụng
 ```

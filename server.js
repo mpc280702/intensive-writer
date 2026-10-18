@@ -16,7 +16,13 @@ const MIME_TYPES = {
 
 const server = http.createServer((req, res) => {
   let reqUrl = req.url.split('?')[0];
-  if (reqUrl === '/') reqUrl = '/index.html';
+
+  // Routing aliases for clear separation of web and admin
+  if (reqUrl === '/' || reqUrl === '/index.html' || reqUrl === '/web' || reqUrl === '/web/') {
+    reqUrl = '/web/index.html';
+  } else if (reqUrl === '/admin' || reqUrl === '/admin/' || reqUrl === '/admin.html') {
+    reqUrl = '/admin/index.html';
+  }
 
   const filePath = path.join(__dirname, reqUrl);
   const ext = path.extname(filePath).toLowerCase();
@@ -26,7 +32,7 @@ const server = http.createServer((req, res) => {
     if (err) {
       if (err.code === 'ENOENT') {
         res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-        res.end('404 Not Found');
+        res.end(`404 Not Found: ${reqUrl}`);
       } else {
         res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
         res.end(`500 Server Error: ${err.code}`);
@@ -40,4 +46,6 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   console.log(`🌻 Intensive Writer đang chạy tại: http://localhost:${PORT}`);
+  console.log(`   - Giao diện học viên (Web): http://localhost:${PORT}/web/`);
+  console.log(`   - Giao diện quản trị (Admin): http://localhost:${PORT}/admin/`);
 });
