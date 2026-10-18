@@ -142,6 +142,8 @@ function updateAIStatusBadge() {
 
 /* ---------------- RENDER: PRACTICE ---------------- */
 function renderPractice() {
+  PROMPTS = DataManager.getPrompts();
+  IDEAS = DataManager.getAllIdeas();
   const el = document.getElementById('view-practice');
   if (practice.stage === 'prompts') return renderPrompts(el);
   if (practice.stage === 'ideasBank') return renderIdeasBank(el);

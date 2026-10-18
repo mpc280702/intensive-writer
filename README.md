@@ -33,7 +33,14 @@
    - Thống kê thời gian luyện tập thực tế và tổng hợp các lỗi ngữ pháp hay gặp.
    - Bộ sưu tập các cụm từ vựng hay được tuyên dương.
 
-6. **Tích hợp AI Linh Hoạt**:
+6. **Trang Quản Trị Viên Toàn Diện (Admin Portal - `/admin.html`)**:
+   - Bảo mật bằng mã PIN quản trị (Mặc định: `admin123`, có thể đổi trong Cài đặt).
+   - **Quản lý Đề bài (Prompts)**: Thêm mới, chỉnh sửa, phân loại theo Theme, xóa đề thi.
+   - **Ngân hàng Ý tưởng (Ideas Bank)**: Quản lý luận điểm, luận cứ cho Thân bài 1 & 2 theo từng đề bài.
+   - **Theo dõi bài nộp học viên**: Xem chi tiết bài viết của học viên kèm điểm số và phân tích lỗi AI.
+   - **Sao lưu & Phục hồi**: Xuất/nhập file sao lưu JSON và khôi phục cài đặt gốc.
+
+7. **Tích hợp AI Linh Hoạt**:
    - **Chế độ Demo / Offline AI**: Hoạt động hoàn toàn tự động ngay cả khi không có kết nối API, tạo trải nghiệm mượt mà không lỗi.
    - **Tùy chọn Claude 3.5 Sonnet**: Có thể nhập API Key của Anthropic trực tiếp trong phần Cài đặt (⚙️) bất cứ lúc nào.
 

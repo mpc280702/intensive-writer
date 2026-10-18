@@ -2,7 +2,7 @@
 
 const THEMES = ['Education', 'Environment', 'Transportation', 'Technology', 'Health'];
 
-const PROMPTS = [
+const DEFAULT_PROMPTS = [
   { id: 'edu1', theme: 'Education', type: 'Advantages & Disadvantages', title: 'Some universities offer online courses as an alternative to classes delivered on campus. Do the advantages of this form of education outweigh its disadvantages?' },
   { id: 'edu2', theme: 'Education', type: 'Advantages & Disadvantages', title: 'In the past, lectures were the traditional method of teaching large numbers of students in a classroom. Nowadays new technology is increasingly being used to teach students. What are the advantages and disadvantages of this new approach in teaching?' },
   { id: 'edu3', theme: 'Education', type: 'Advantages & Disadvantages', title: 'There are more workers to work from home and more students to study from home. This is because computer technology is becoming more and more easily accessible and cheaper. Do the advantages of working or studying from home outweigh its disadvantages?' },
@@ -17,7 +17,7 @@ const PROMPTS = [
   { id: 'health2', theme: 'Health', type: 'Opinion', title: 'People believe that the government should provide free healthcare to citizens. To what extent do you agree or disagree?' }
 ];
 
-const IDEAS = {
+const DEFAULT_IDEAS = {
   edu1: [
     { id: 'a1', side: 'body1', text: 'More cost-effective than traditional learning', explain: 'Online courses cut down on tuition, commuting, and accommodation costs compared with attending campus.', vocab: ['cost-effective', 'tuition fees', 'financial burden'] },
     { id: 'a2', side: 'body1', text: 'Flexible learning anytime, anywhere', explain: 'Students can study at their own pace and fit lessons around work or family commitments.', vocab: ['flexible schedule', 'self-paced learning', 'convenience'] },
@@ -144,3 +144,60 @@ const BLOCKS = [
   { key: 'body2', label: 'Thân bài 2 (Body 2)', struct: 'body', minWords: 80, targetWords: '90 - 110 từ' },
   { key: 'conclusion', label: 'Kết bài (Conclusion)', struct: 'conclusion', minWords: 30, targetWords: '35 - 50 từ' }
 ];
+
+/* ---------------- DATA MANAGER (Dynamic Prompts & Ideas for Admin & Learner) ---------------- */
+const DataManager = {
+  getPrompts() {
+    try {
+      const stored = localStorage.getItem('iw:custom_prompts');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Error reading custom prompts', e);
+    }
+    return DEFAULT_PROMPTS;
+  },
+
+  savePrompts(prompts) {
+    localStorage.setItem('iw:custom_prompts', JSON.stringify(prompts));
+    window.PROMPTS = prompts;
+  },
+
+  getAllIdeas() {
+    try {
+      const stored = localStorage.getItem('iw:custom_ideas');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed === 'object') {
+          return { ...DEFAULT_IDEAS, ...parsed };
+        }
+      }
+    } catch (e) {
+      console.warn('Error reading custom ideas', e);
+    }
+    return DEFAULT_IDEAS;
+  },
+
+  getIdeas(promptId) {
+    const all = this.getAllIdeas();
+    return all[promptId] || [];
+  },
+
+  saveIdeas(allIdeas) {
+    localStorage.setItem('iw:custom_ideas', JSON.stringify(allIdeas));
+    window.IDEAS = allIdeas;
+  },
+
+  resetToDefault() {
+    localStorage.removeItem('iw:custom_prompts');
+    localStorage.removeItem('iw:custom_ideas');
+    window.PROMPTS = DEFAULT_PROMPTS;
+    window.IDEAS = DEFAULT_IDEAS;
+  }
+};
+
+// Global variables initialized
+let PROMPTS = DataManager.getPrompts();
+let IDEAS = DataManager.getAllIdeas();
