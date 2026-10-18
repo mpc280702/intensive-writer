@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intensive Writer — Nền tảng luyện viết IELTS Task 2 toàn diện</title>
+  <meta name="description" content="Luyện viết IELTS Writing Task 2 theo phương pháp Scaffold: khám phá ý tưởng, kiến tạo dàn ý, viết từng đoạn và nhận phản hồi chi tiết từ AI.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito+Sans:wght@400;600;700;800&display=swap&subset=vietnamese,latin-ext" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">🌻</span>
+        Intensive <em>Writer</em>
+      </div>
+
+      <div class="topbar-right">
+        <span id="aiStatusBadge" class="ai-status-badge">
+          <span class="indicator-dot"></span>Demo / Offline AI
+        </span>
+        <button id="settingsBtn" class="icon-btn" title="Cài đặt khóa API">
+          ⚙️ <span>Cài đặt</span>
+        </button>
+        <nav class="tabs">
+          <button class="tab-btn active" data-tab="practice">Luyện viết</button>
+          <button class="tab-btn" data-tab="dashboard">Bảng điều khiển</button>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Main Views -->
+    <main id="view-practice" class="view active"></main>
+    <main id="view-dashboard" class="view"></main>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>⚙️ Cài đặt Trợ lý AI</h3>
+        <button class="drawer-close modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-top:0;font-size:0.95rem;color:var(--ink-soft);line-height:1.6;">
+          Intensive Writer tích hợp sẵn <strong>bộ máy Offline AI thông minh</strong> để bạn có thể luyện tập ngay lập tức mà không cần bất kỳ khóa API nào.
+        </p>
+        <p style="font-size:0.95rem;color:var(--ink-soft);line-height:1.6;">
+          Nếu bạn muốn sử dụng trực tiếp mô hình cao cấp <strong>Claude 3.5 Sonnet</strong> từ Anthropic, hãy nhập API Key của bạn bên dưới:
+        </p>
+        <label style="font-weight:600;font-size:0.9rem;display:block;margin-top:14px;">
+          Anthropic API Key (sk-ant-...):
+          <input type="password" id="anthropicApiKeyInput" class="input-field" placeholder="sk-ant-api03-..." autocomplete="off">
+        </label>
+        <p style="font-size:0.8rem;color:var(--ink-soft);margin-top:8px;">
+          * Khóa API được lưu trữ cục bộ an toàn trên trình duyệt của bạn (localStorage) và không bao giờ gửi đến bên thứ ba.
+        </p>
+      </div>
+      <div class="modal-foot">
+        <button class="ghost-btn modal-close">Đóng</button>
+        <button id="saveApiKeyBtn" class="primary-btn">Lưu cài đặt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full Essay Modal -->
+  <div id="fullEssayModal" class="modal-backdrop">
+    <div class="modal-box" style="width:min(680px, 100%);">
+      <div class="modal-head">
+        <div>
+          <h3 style="margin:0;">Toàn bộ bài luận của bạn</h3>
+          <span id="fullEssayWordCount" style="font-size:0.85rem;color:var(--ink-soft);"></span>
+        </div>
+        <button class="drawer-close modal-close">✕</button>
+      </div>
+      <div class="modal-body" id="fullEssayContent"></div>
+      <div class="modal-foot">
+        <button class="ghost-btn" id="downloadEssayBtn">📥 Tải file .txt</button>
+        <button class="primary-btn" id="copyEssayBtn">📋 Sao chép toàn bộ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Scripts -->
+  <script src="js/storage.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/ai-service.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
