@@ -88,6 +88,55 @@
     });
   }
 
+  async function migrateGuestToUser(userId) {
+    if (!userId || !canSync() || String(activeUserId) !== String(userId)) return 0;
+    const legacyData = new Map();
+    const guestPrefix = 'iw:local:guest:';
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const storedKey = localStorage.key(i);
+        if (storedKey && storedKey.startsWith(guestPrefix)) {
+          const key = storedKey.slice(guestPrefix.length);
+          if (key !== '__pending_keys' && (key === 'iw:stats' || key.startsWith('iw:attempt:') || key.startsWith('iw:explore:'))) {
+            legacyData.set(key, localStorage.getItem(storedKey));
+          }
+        }
+      }
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && LEGACY_PREFIXES.some(function (prefix) { return key === prefix || key.startsWith(prefix); }) && !legacyData.has(key)) {
+          legacyData.set(key, localStorage.getItem(key));
+        }
+      }
+    } catch (error) {
+      console.warn('[storage] could not scan guest data for migration', error);
+      return 0;
+    }
+
+    let migrated = 0;
+    for (const entry of legacyData.entries()) {
+      const key = entry[0];
+      const value = entry[1];
+      if (typeof value !== 'string' || localStorage.getItem(scopedKey(key)) !== null) continue;
+      try {
+        const remote = await window.IWApi.request('/api/storage/' + encodeURIComponent(key));
+        if (remote && remote.found) continue;
+      } catch (error) {
+        if (error.status !== 404) continue;
+      }
+      try {
+        localStorage.setItem(scopedKey(key), value);
+        addPending(key);
+        await syncKey(key);
+        migrated++;
+      } catch (error) {
+        addPending(key);
+        showLocalOnlyNotice('Kept locally — waiting to sync.');
+      }
+    }
+    return migrated;
+  }
+
   async function syncPending() {
     if (!canSync()) return;
     const keys = pendingKeys();
@@ -191,7 +240,8 @@
       }
       return true;
     },
-    async syncPending() { return syncPending(); }
+    async syncPending() { return syncPending(); },
+    async migrateGuestToUser(userId) { return migrateGuestToUser(userId); }
   };
 
   window.addEventListener('online', function () { syncPending().catch(function () {}); });
