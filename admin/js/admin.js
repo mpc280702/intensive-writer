@@ -180,9 +180,9 @@ function renderOverview() {
     const count = (allIdeas[p.id] || []).length;
     return `
       <tr>
-        <td><span class="badge-tag ${getThemeBadgeClass(p.theme)}">${p.theme}</span></td>
-        <td><strong>${p.type}</strong></td>
-        <td>${p.title}</td>
+        <td><span class="badge-tag ${getThemeBadgeClass(p.theme)}">${escapeHtmlAdmin(p.theme)}</span></td>
+        <td><strong>${escapeHtmlAdmin(p.type)}</strong></td>
+        <td>${escapeHtmlAdmin(p.title)}</td>
         <td><span class="badge-tag badge-default">${count} ý tưởng</span></td>
         <td style="text-align:right;">
           <button class="btn-secondary btn-sm" onclick="jumpToPromptIdeas('${p.id}')">Ý tưởng</button>
@@ -226,10 +226,10 @@ function renderPromptsTable() {
     const count = (allIdeas[p.id] || []).length;
     return `
       <tr>
-        <td><code>${p.id}</code></td>
-        <td><span class="badge-tag ${getThemeBadgeClass(p.theme)}">${p.theme}</span></td>
-        <td>${p.type}</td>
-        <td style="font-weight:500;">${p.title}</td>
+        <td><code>${escapeHtmlAdmin(p.id)}</code></td>
+        <td><span class="badge-tag ${getThemeBadgeClass(p.theme)}">${escapeHtmlAdmin(p.theme)}</span></td>
+        <td>${escapeHtmlAdmin(p.type)}</td>
+        <td style="font-weight:500;">${escapeHtmlAdmin(p.title)}</td>
         <td><span class="badge-tag badge-default">${count} ý</span></td>
         <td style="text-align:right;">
           <button class="btn-secondary btn-sm" onclick="editPrompt('${p.id}')">Sửa</button>
@@ -278,7 +278,7 @@ function renderIdeasTab() {
   const currentVal = select.value;
 
   select.innerHTML = prompts.map(p => `
-    <option value="${p.id}">[${p.theme}] ${p.id.toUpperCase()}: ${p.title.slice(0, 65)}...</option>
+    <option value="${escapeHtmlAdmin(p.id)}">[${escapeHtmlAdmin(p.theme)}] ${escapeHtmlAdmin(p.id.toUpperCase())}: ${escapeHtmlAdmin(p.title.slice(0, 65))}...</option>
   `).join('');
 
   if (currentVal && prompts.some(p => p.id === currentVal)) {
@@ -300,14 +300,14 @@ function renderIdeasForPrompt(promptId) {
   document.getElementById('body2CountBadge').textContent = `${body2.length} ý`;
 
   function renderIdeaCard(i) {
-    const vocabChips = (i.vocab || []).map(v => `<span class="badge-tag badge-default" style="font-size:0.75rem;">${v}</span>`).join(' ');
+    const vocabChips = (i.vocab || []).map(v => `<span class="badge-tag badge-default" style="font-size:0.75rem;">${escapeHtmlAdmin(v)}</span>`).join(' ');
     return `
       <div style="background:var(--admin-card);border:1px solid var(--admin-border);border-radius:12px;padding:16px;box-shadow:var(--admin-shadow);">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-          <h4 style="margin:0 0 6px;font-size:0.98rem;color:var(--admin-ink);">${i.text}</h4>
-          <span style="font-size:0.75rem;color:var(--admin-ink-soft);">${i.id}</span>
+          <h4 style="margin:0 0 6px;font-size:0.98rem;color:var(--admin-ink);">${escapeHtmlAdmin(i.text)}</h4>
+          <span style="font-size:0.75rem;color:var(--admin-ink-soft);">${escapeHtmlAdmin(i.id)}</span>
         </div>
-        <p style="margin:0 0 10px;font-size:0.88rem;color:var(--admin-ink-soft);line-height:1.5;">${i.explain}</p>
+        <p style="margin:0 0 10px;font-size:0.88rem;color:var(--admin-ink-soft);line-height:1.5;">${escapeHtmlAdmin(i.explain)}</p>
         <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;">${vocabChips}</div>
         <div style="display:flex;justify-content:flex-end;gap:8px;">
           <button class="btn-secondary btn-sm" onclick="editIdea('${promptId}', '${i.id}')">Sửa</button>
