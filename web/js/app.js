@@ -722,6 +722,17 @@ function renderWriting(el) {
     ta.addEventListener('input', () => {
       const key = ta.dataset.key;
       a.texts[key] = ta.value;
+      const currentFeedback = a.feedback[key];
+      if (currentFeedback && !currentFeedback.loading && !currentFeedback.error && !currentFeedback.stale &&
+          String(currentFeedback.source_text || '') !== ta.value) {
+        a.feedback[key] = { stale: true };
+        a.doneBlocks[key] = false;
+        rebuildFeedbackStats();
+        const feedbackSlot = el.querySelector(`.feedback-slot[data-key="${key}"]`);
+        if (feedbackSlot) feedbackSlot.innerHTML = renderFeedbackHTML(a.feedback[key]);
+        saveAttempt(practice.promptId);
+        saveStats();
+      }
       const countEl = el.querySelector(`.word-count-span[data-key="${key}"]`);
       if (countEl) countEl.textContent = countWords(ta.value);
     });
@@ -1012,6 +1023,7 @@ function renderDashboard() {
   if (window.IWAuth) await window.IWAuth.bootstrap();
   if (window.IWAuth && window.IWAuth.currentUser && window.DataManager && window.DataManager.syncRemote) await window.DataManager.syncRemote();
   await loadState();
+  rebuildFeedbackStats();
 
   // Tab listeners
   document.querySelectorAll('.tab-btn').forEach(b => {
