@@ -23,8 +23,8 @@
         <span id="aiStatusBadge" class="ai-status-badge">
           <span class="indicator-dot"></span>Demo / Offline AI
         </span>
-        <button id="settingsBtn" class="icon-btn" title="Cài đặt khóa API">
-          ⚙️ <span>Cài đặt</span>
+        <button id="accountBtn" class="icon-btn" title="Đăng nhập để đồng bộ tiến độ">
+          👤 <span id="accountBtnLabel">Đăng nhập</span>
         </button>
         <a href="../admin/" class="icon-btn" title="Trang quản trị viên" style="text-decoration:none;">
           🔐 <span>Quản trị</span>
@@ -41,32 +41,31 @@
     <main id="view-dashboard" class="view"></main>
   </div>
 
-  <!-- Settings Modal -->
-  <div id="settingsModal" class="modal-backdrop">
+  <!-- Account Modal: authentication is handled by the API server -->
+  <div id="accountModal" class="modal-backdrop">
     <div class="modal-box">
       <div class="modal-head">
-        <h3>⚙️ Cài đặt Trợ lý AI</h3>
-        <button class="drawer-close modal-close">✕</button>
+        <h3>👤 Tài khoản học viên</h3>
+        <button class="drawer-close" type="button" data-auth-close aria-label="Đóng">✕</button>
       </div>
-      <div class="modal-body">
-        <p style="margin-top:0;font-size:0.95rem;color:var(--ink-soft);line-height:1.6;">
-          Intensive Writer tích hợp sẵn <strong>bộ máy Offline AI thông minh</strong> để bạn có thể luyện tập ngay lập tức mà không cần bất kỳ khóa API nào.
-        </p>
-        <p style="font-size:0.95rem;color:var(--ink-soft);line-height:1.6;">
-          Nếu bạn muốn sử dụng trực tiếp mô hình cao cấp <strong>Claude 3.5 Sonnet</strong> từ Anthropic, hãy nhập API Key của bạn bên dưới:
-        </p>
-        <label style="font-weight:600;font-size:0.9rem;display:block;margin-top:14px;">
-          Anthropic API Key (sk-ant-...):
-          <input type="password" id="anthropicApiKeyInput" class="input-field" placeholder="sk-ant-api03-..." autocomplete="off">
-        </label>
-        <p style="font-size:0.8rem;color:var(--ink-soft);margin-top:8px;">
-          * Khóa API được lưu trữ cục bộ an toàn trên trình duyệt của bạn (localStorage) và không bao giờ gửi đến bên thứ ba.
-        </p>
-      </div>
-      <div class="modal-foot">
-        <button class="ghost-btn modal-close">Đóng</button>
-        <button id="saveApiKeyBtn" class="primary-btn">Lưu cài đặt</button>
-      </div>
+      <form id="accountLoginForm">
+        <div class="modal-body">
+          <p style="margin-top:0;font-size:0.92rem;color:var(--ink-soft);line-height:1.6;">Đăng nhập để đồng bộ bài viết, lựa chọn và feedback giữa các thiết bị. Khi chưa kết nối API, bạn vẫn có thể dùng chế độ demo lưu trên trình duyệt này.</p>
+          <label style="font-weight:600;font-size:0.9rem;display:block;margin-top:14px;">Email
+            <input type="email" id="accountEmail" class="input-field" placeholder="you@example.com" autocomplete="username" required>
+          </label>
+          <label style="font-weight:600;font-size:0.9rem;display:block;margin-top:14px;">Mật khẩu
+            <input type="password" id="accountPassword" class="input-field" placeholder="Tối thiểu 10 ký tự" autocomplete="current-password" minlength="10" required>
+          </label>
+          <p id="authMessage" class="auth-message" role="status" aria-live="polite"></p>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="ghost-btn" data-auth-close>Đóng</button>
+          <button type="button" id="logoutAccountBtn" class="ghost-btn" hidden>Đăng xuất</button>
+          <button type="button" id="registerAccountBtn" class="ghost-btn" hidden>Đăng ký</button>
+          <button type="submit" class="primary-btn">Đăng nhập</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -89,9 +88,12 @@
   </div>
 
   <!-- Application Scripts -->
+  <script src="../shared/js/config.js"></script>
+  <script src="../shared/js/api-client.js"></script>
   <script src="../shared/js/storage.js"></script>
   <script src="../shared/js/data.js"></script>
   <script src="../shared/js/ai-service.js"></script>
+  <script src="js/auth.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
