@@ -1,13 +1,11 @@
 {
   "name": "intensive-writer",
-  "version": "1.0.0",
-  "description": "Nền tảng luyện viết IELTS Task 2 toàn diện với Scaffold tư duy và phản hồi AI",
+  "version": "1.1.0",
+  "description": "IELTS Writing Task 2 scaffold app with server-side AI, account auth and per-user progress sync",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
-  },
+  "scripts": { "start": "node server.js", "dev": "node --watch server.js" },
+  "engines": { "node": ">=20" },
+  "dependencies": { "cors": "^2.8.5", "dotenv": "^16.4.7", "express": "^4.21.2", "express-rate-limit": "^7.5.0", "helmet": "^8.0.0", "pg": "^8.13.1" },
   "keywords": ["ielts", "writing", "task-2", "ai-feedback", "scaffold"],
-  "author": "",
   "license": "MIT"
 }
