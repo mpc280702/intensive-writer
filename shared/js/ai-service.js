@@ -1,4 +1,6 @@
-// AI Service: Supports Claude Anthropic API with intelligent offline fallback engine
+// Server-side Anthropic integration with a safe offline fallback.
+// Remove the old browser-stored secret from earlier versions of this project.
+try { localStorage.removeItem('iw:anthropic_key'); } catch (error) {}
 
 const AIService = {
   isConfigured() {
