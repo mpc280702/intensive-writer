@@ -20,14 +20,48 @@ function cleanText(str) {
 
 function renderParagraphs(text) {
   if (!text) return '';
-  return String(text)
-    .split(/\n{2,}/)
-    .map(block => block.split(/\n/).map(stripListMarker).filter(Boolean).join(' '))
-    .filter(Boolean)
-    .map(p => `<p>${escapeHtml(p)}</p>`)
-    .join('');
+  const blocks = String(text).replace(/\r/g, '').split(/\n\s*\n/).map(function (block) { return block.trim(); }).filter(Boolean);
+  const output = [];
+  for (const block of blocks) {
+    const lines = block.split('\n');
+    const rendered = [];
+    let paragraphLines = [];
+    let listItems = [];
+    let listType = null;
+    function flushParagraph() {
+      if (!paragraphLines.length) return;
+      rendered.push('<p>' + escapeHtml(paragraphLines.join(' ').trim()) + '</p>');
+      paragraphLines = [];
+    }
+    function flushList() {
+      if (!listItems.length) return;
+      const tag = listType === 'ol' ? 'ol' : 'ul';
+      rendered.push('<' + tag + '>' + listItems.map(function (item) { return '<li>' + escapeHtml(item) + '</li>'; }).join('') + '</' + tag + '>');
+      listItems = [];
+      listType = null;
+    }
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line) continue;
+      const bullet = line.match(/^[-*•]\s+(.+)$/);
+      const numbered = line.match(/^\d+[.)]\s+(.+)$/);
+      if (bullet || numbered) {
+        flushParagraph();
+        const nextType = numbered ? 'ol' : 'ul';
+        if (listType && listType !== nextType) flushList();
+        listType = nextType;
+        listItems.push((bullet || numbered)[1].trim());
+      } else {
+        flushList();
+        paragraphLines.push(line);
+      }
+    }
+    flushParagraph();
+    flushList();
+    output.push(rendered.join(''));
+  }
+  return output.join('');
 }
-
 function countWords(str) {
   if (!str) return 0;
   return str.trim().split(/\s+/).filter(Boolean).length;
@@ -107,13 +141,16 @@ function getAttempt(pid) {
 /* ---------------- TIMER ---------------- */
 function startTimer() {
   if (timerHandle) return;
+  let lastActivityAt = Date.now();
+  ['pointerdown', 'keydown', 'input', 'touchstart', 'scroll'].forEach(function (eventName) {
+    document.addEventListener(eventName, function () { lastActivityAt = Date.now(); }, { passive: true });
+  });
   timerHandle = setInterval(() => {
-    if (document.visibilityState === 'visible') {
+    const active = document.visibilityState === 'visible' && (Date.now() - lastActivityAt) < 60000;
+    if (active) {
       stats.secondsSpent += 10;
       saveStats();
-      if (document.getElementById('view-dashboard').classList.contains('active')) {
-        renderDashboard();
-      }
+      if (document.getElementById('view-dashboard').classList.contains('active')) renderDashboard();
     }
   }, 10000);
 }
@@ -131,12 +168,12 @@ function updateAIStatusBadge() {
   if (!badge) return;
   if (AIService.isConfigured()) {
     badge.className = 'ai-status-badge active';
-    badge.innerHTML = '<span class="indicator-dot"></span>Claude 3.5 AI';
-    badge.title = 'Đang sử dụng Anthropic Claude 3.5 API';
+    badge.innerHTML = '<span class="indicator-dot"></span>AI Server';
+    badge.title = 'AI được gọi qua backend; API key không nằm trong trình duyệt';
   } else {
     badge.className = 'ai-status-badge';
     badge.innerHTML = '<span class="indicator-dot"></span>Demo / Offline AI';
-    badge.title = 'Đang sử dụng bộ máy gia sư IELTS thông minh cục bộ';
+    badge.title = 'Đang dùng bộ máy demo cục bộ; đăng nhập và cấu hình API để đồng bộ/AI server';
   }
 }
 
@@ -159,7 +196,7 @@ function renderPrompts(el) {
       const themePrompts = PROMPTS.filter(p => p.theme === theme);
       return `
       <div class="theme-block">
-        <h3 class="theme-heading">${theme}</h3>
+        <h3 class="theme-heading">${escapeHtml(theme)}</h3>
         <div class="prompt-grid">
           ${themePrompts.map(p => {
             const a = attempts[p.id];
@@ -168,8 +205,8 @@ function renderPrompts(el) {
             return `
             <div class="prompt-card" data-pid="${p.id}">
               <div>
-                <span class="tag">${p.type}</span>
-                <h3>${p.title}</h3>
+                <span class="tag">${escapeHtml(p.type)}</span>
+                <h3>${escapeHtml(p.title)}</h3>
               </div>
               <div class="prompt-status ${done ? '' : (started ? 'progress' : 'todo')}">
                 <span class="dot"></span>
@@ -213,7 +250,7 @@ function renderIdeasBank(el) {
       <button class="back-btn" id="backToPrompts" title="Quay lại danh sách đề">←</button>
       <div class="section-label" style="margin:0;">Ideas Bank — Khám phá ý tưởng</div>
     </div>
-    <p class="prompt-title-recap"><strong>${prompt.type}:</strong> ${prompt.title}</p>
+    <p class="prompt-title-recap"><strong>${escapeHtml(prompt.type)}:</strong> ${escapeHtml(prompt.title)}</p>
     <p style="font-size:0.95rem;color:var(--ink-soft);margin:-10px 0 20px;">
       Bấm <strong>Khám phá</strong> để hiểu tường tận ngữ cảnh và ví dụ thực tế tại Việt Nam. Chọn ít nhất <strong>2 ý tưởng</strong> để hệ thống kiến tạo dàn ý hoàn chỉnh.
     </p>
@@ -231,7 +268,7 @@ function renderIdeasBank(el) {
               ${explored ? '<span class="badge badge-explored">Đã khám phá</span>' : ''}
               ${selected ? '<span class="badge badge-selected">✓ Đã chọn</span>' : ''}
             </div>
-            <h4>${i.text}</h4>
+            <h4>${escapeHtml(i.text)}</h4>
             <p class="idea-summary">${cleanText(i.explain)}</p>
             <div class="idea-card-actions">
               <button class="ghost-btn small explore-btn" data-iid="${i.id}">Khám phá</button>
@@ -252,7 +289,7 @@ function renderIdeasBank(el) {
               const idea = ideas.find(i => i.id === iid);
               if (!idea) return '';
               return `<div class="selected-chip-row" data-iid="${iid}">
-                <span>${idea.text}</span>
+                <span>${escapeHtml(idea.text)}</span>
                 <button class="remove-chip" data-iid="${iid}" aria-label="Bỏ chọn">✕</button>
               </div>`;
             }).join('')}
@@ -319,7 +356,7 @@ function renderDrawerContent(idea, promptTitle, exploration, isSelected) {
   if (!exploration) {
     return `
       <div class="drawer-header">
-        <h3>${idea.text}</h3>
+        <h3>${escapeHtml(idea.text)}</h3>
         <button class="drawer-close" id="drawerClose">✕</button>
       </div>
       <div class="drawer-body">
@@ -715,7 +752,10 @@ function renderFeedbackHTML(fb) {
     return `<div class="feedback-box"><div class="loading-line"><span class="spinner"></span>Đang phân tích ngữ pháp, từ vựng và ước lượng band...</div></div>`;
   }
   if (fb.error) {
-    return `<div class="feedback-box"><div class="err-msg">Không thể lấy feedback lúc này. Vui lòng thử lại.</div></div>`;
+    return '<div class="feedback-box"><div class="err-msg">Không thể lấy feedback lúc này. Vui lòng thử lại.</div></div>';
+  }
+  if (fb.stale) {
+    return '<div class="feedback-box"><div class="err-msg">Bản nháp đã thay đổi sau khi yêu cầu feedback. Hãy chạy phân tích lại để nhận nhận xét khớp với nội dung mới.</div></div>';
   }
 
   const grammar = (fb.grammar_issues || []).map(g => `
@@ -747,6 +787,32 @@ function renderFeedbackHTML(fb) {
   `;
 }
 
+function rebuildFeedbackStats() {
+  const errorCounts = {};
+  const praised = [];
+  let completed = 0;
+  for (const attempt of Object.values(attempts)) {
+    if (!attempt || !attempt.feedback) continue;
+    for (const feedback of Object.values(attempt.feedback)) {
+      if (!feedback || feedback.loading || feedback.error || feedback.stale) continue;
+      (feedback.grammar_issues || []).forEach(function (issue) {
+        const category = issue.issue_type || 'Grammar';
+        errorCounts[category] = (errorCounts[category] || 0) + 1;
+      });
+      (feedback.good_phrases || []).forEach(function (phrase) {
+        if (phrase && !praised.includes(phrase)) praised.push(phrase);
+      });
+    }
+    const isComplete = BLOCKS.every(function (block) {
+      return attempt.doneBlocks && attempt.doneBlocks[block.key] && attempt.feedback[block.key] && !attempt.feedback[block.key].error && !attempt.feedback[block.key].stale;
+    });
+    if (isComplete) completed += 1;
+  }
+  stats.errorCounts = errorCounts;
+  stats.praisedPhrases = praised.slice(-40);
+  stats.essaysCompleted = completed;
+}
+
 /* REQUEST FEEDBACK */
 async function requestFeedback(el, blockKey) {
   const a = getAttempt(practice.promptId);
@@ -767,30 +833,21 @@ async function requestFeedback(el, blockKey) {
 
   try {
     const parsed = await AIService.evaluateParagraph(prompt, blockKey, blockLabel, text);
+    if ((a.texts[blockKey] || '').trim() !== text) {
+      a.feedback[blockKey] = { stale: true, evaluatedText: text };
+      saveAttempt(practice.promptId);
+      renderWriting(el);
+      return;
+    }
+    parsed.source_text = text;
     a.feedback[blockKey] = parsed;
     a.doneBlocks[blockKey] = true;
-
-    // Aggregate stats
-    (parsed.grammar_issues || []).forEach(g => {
-      const t = g.issue_type || 'Grammar';
-      stats.errorCounts[t] = (stats.errorCounts[t] || 0) + 1;
-    });
-
-    (parsed.good_phrases || []).forEach(p => {
-      if (!stats.praisedPhrases.includes(p)) stats.praisedPhrases.push(p);
-      if (stats.praisedPhrases.length > 40) stats.praisedPhrases.shift();
-    });
-
-    const isAllDone = BLOCKS.every(b => a.doneBlocks[b.key]);
-    if (isAllDone && !a._countedComplete) {
-      a._countedComplete = true;
-      stats.essaysCompleted += 1;
-    }
-
+    rebuildFeedbackStats();
+    const isAllDone = BLOCKS.every(b => a.doneBlocks[b.key] && a.feedback[b.key] && !a.feedback[b.key].stale && !a.feedback[b.key].error);
+    if (isAllDone) a._countedComplete = true;
     saveAttempt(practice.promptId);
     saveStats();
-    renderWriting(el);
-  } catch (err) {
+    renderWriting(el);  } catch (err) {
     console.error('feedback error', err);
     a.feedback[blockKey] = { error: true };
     slot.innerHTML = renderFeedbackHTML(a.feedback[blockKey]);
@@ -839,18 +896,6 @@ function openFullEssayModal() {
     link.download = `IELTS_Writing_${practice.promptId}.txt`;
     link.click();
   };
-}
-
-/* ---------------- SETTINGS MODAL ---------------- */
-function openSettingsModal() {
-  const modal = document.getElementById('settingsModal');
-  const input = document.getElementById('anthropicApiKeyInput');
-  input.value = AIService.getApiKey();
-  modal.classList.add('open');
-}
-
-function closeModals() {
-  document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
 }
 
 /* ---------------- DASHBOARD ---------------- */
@@ -950,7 +995,7 @@ function renderDashboard() {
       </div>
       <div class="list-panel phrases">
         <h4>Bộ sưu tập từ vựng & Collocation khen ngợi</h4>
-        ${phrases.length ? `<div>${phrases.map(p => `<span class="phrase-pill">${p}</span>`).join('')}</div>` : '<div class="empty-note">Chưa có cụm từ nào được tuyên dương — hãy cố gắng viết thật hay nhé!</div>'}
+        ${phrases.length ? `<div>${phrases.map(p => `<span class="phrase-pill">${escapeHtml(p)}</span>` ).join('')}</div>` : '<div class="empty-note">Chưa có cụm từ nào được tuyên dương — hãy cố gắng viết thật hay nhé!</div>'}
       </div>
     </div>
   `;
@@ -958,18 +1003,14 @@ function renderDashboard() {
 
 /* ---------------- INITIALIZATION ---------------- */
 (async function init() {
+  if (window.IWAuth) await window.IWAuth.bootstrap();
+  if (window.IWAuth && window.IWAuth.currentUser && window.DataManager && window.DataManager.syncRemote) await window.DataManager.syncRemote();
   await loadState();
 
   // Tab listeners
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.addEventListener('click', () => switchTab(b.dataset.tab));
   });
-
-  // Settings button
-  const settingsBtn = document.getElementById('settingsBtn');
-  if (settingsBtn) {
-    settingsBtn.addEventListener('click', openSettingsModal);
-  }
 
   // Modal close buttons
   document.querySelectorAll('.modal-close').forEach(btn => {
@@ -980,18 +1021,6 @@ function renderDashboard() {
       if (e.target === mb) closeModals();
     });
   });
-
-  // Save Settings
-  const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
-  if (saveApiKeyBtn) {
-    saveApiKeyBtn.addEventListener('click', () => {
-      const input = document.getElementById('anthropicApiKeyInput');
-      AIService.setApiKey(input.value);
-      updateAIStatusBadge();
-      closeModals();
-      showSaveFallback('Đã cập nhật cài đặt API!');
-    });
-  }
 
   updateAIStatusBadge();
   renderPractice();
