@@ -1,5 +1,15 @@
 /* Intensive Writer - Admin Portal Logic */
 
+function escapeHtmlAdmin(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+const remoteSubmissionCache = Object.create(null);
+
 function showToast(msg) {
   const toast = document.getElementById('adminToast');
   if (!toast) return;
@@ -344,64 +354,97 @@ window.deleteIdea = function(promptId, ideaId) {
 };
 
 /* ---------------- SUBMISSIONS & STUDENT ATTEMPTS ---------------- */
-function renderSubmissionsTable() {
+async function renderSubmissionsTable() {
   const tbody = document.getElementById('submissionsTableBody');
   const prompts = DataManager.getPrompts();
   const list = [];
 
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k.startsWith('iw:attempt:')) {
-      const pid = k.replace('iw:attempt:', '');
+  if (window.IWApi && window.IWApi.isConfigured() && window.IWAuth && window.IWAuth.currentUser && window.IWAuth.currentUser.role === 'admin') {
+    try {
+      const response = await window.IWApi.request('/api/admin/submissions');
+      (response.items || []).forEach(function (item) {
+        try {
+          const pid = String(item.key || '').replace(/^iw:attempt:/, '');
+          const data = typeof item.value === 'string' ? JSON.parse(item.value) : item.value;
+          if (!pid || !data) return;
+          const promptObj = prompts.find(function (p) { return p.id === pid; }) || { title: 'Đề bài #' + pid };
+          remoteSubmissionCache[String(item.user_id) + ':' + pid] = data;
+          list.push({ pid: pid, userId: item.user_id, email: item.email, prompt: promptObj, data: data });
+        } catch (error) {}
+      });
+    } catch (error) {
+      showToast('Không tải được bài viết từ máy chủ; đang hiển thị dữ liệu cục bộ nếu có.');
+    }
+  }
+
+  // Include this browser's legacy attempts in local/demo mode.
+  if (!list.length) {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith('iw:attempt:')) continue;
+      const pid = key.replace('iw:attempt:', '');
       try {
-        const data = JSON.parse(localStorage.getItem(k));
-        const promptObj = prompts.find(p => p.id === pid) || { title: `Đề bài #${pid}` };
-        list.push({ pid, prompt: promptObj, data });
-      } catch (e) {}
+        const data = JSON.parse(localStorage.getItem(key));
+        const promptObj = prompts.find(function (p) { return p.id === pid; }) || { title: 'Đề bài #' + pid };
+        list.push({ pid: pid, userId: '', email: 'Thiết bị hiện tại', prompt: promptObj, data: data });
+      } catch (error) {}
     }
   }
 
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--admin-ink-soft);padding:30px;">Chưa có học viên nào làm bài trên trình duyệt này.</td></tr>`;
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--admin-ink-soft);padding:30px;">Chưa có bài viết nào được đồng bộ lên hệ thống.</td></tr>';
     return;
   }
 
-  tbody.innerHTML = list.map(item => {
-    const doneBlocks = Object.keys(item.data.doneBlocks || {}).length;
-    
-    // Average band estimate
-    let sumBand = 0, countBand = 0;
-    Object.values(item.data.feedback || {}).forEach(fb => {
-      if (fb && fb.band_estimate) {
+  tbody.innerHTML = list.map(function (item) {
+    const doneBlocks = Object.keys(item.data.doneBlocks || {}).filter(function (key) { return item.data.doneBlocks[key]; }).length;
+    let sumBand = 0;
+    let countBand = 0;
+    Object.values(item.data.feedback || {}).forEach(function (fb) {
+      if (fb && fb.band_estimate && !fb.stale && !fb.error) {
         sumBand += Number(fb.band_estimate);
         countBand++;
       }
     });
     const avgBand = countBand > 0 ? (sumBand / countBand).toFixed(1) : 'Chưa chấm';
-
-    return `
-      <tr>
-        <td><code>${item.pid}</code></td>
-        <td style="font-weight:500;">${item.prompt.title}</td>
-        <td><span class="badge-tag ${doneBlocks >= 4 ? 'badge-env' : 'badge-trans'}">${doneBlocks}/4 khối</span></td>
-        <td><strong>${avgBand}</strong></td>
-        <td style="text-align:right;">
-          <button class="btn-secondary btn-sm" onclick="viewSubmissionDetail('${item.pid}')">Xem bài</button>
-        </td>
-      </tr>
-    `;
+    return '<tr>' +
+      '<td><code>' + escapeHtmlAdmin(item.pid) + '</code></td>' +
+      '<td>' + escapeHtmlAdmin(item.email || 'Thiết bị hiện tại') + '</td>' +
+      '<td style="font-weight:500;">' + escapeHtmlAdmin(item.prompt.title) + '</td>' +
+      '<td><span class="badge-tag ' + (doneBlocks >= 4 ? 'badge-env' : 'badge-trans') + '">' + doneBlocks + '/4 khối</span></td>' +
+      '<td><strong>' + escapeHtmlAdmin(avgBand) + '</strong></td>' +
+      '<td style="text-align:right;"><button class="btn-secondary btn-sm" data-pid="' + escapeHtmlAdmin(item.pid) + '" data-user-id="' + escapeHtmlAdmin(item.userId || '') + '">Xem bài</button></td>' +
+      '</tr>';
   }).join('');
+
+  tbody.querySelectorAll('button[data-pid]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      window.viewSubmissionDetail(button.dataset.userId || '', button.dataset.pid);
+    });
+  });
 }
 
-window.viewSubmissionDetail = function(pid) {
+window.viewSubmissionDetail = function(userId, pid) {
   const prompts = DataManager.getPrompts();
-  const p = prompts.find(item => item.id === pid) || { title: `Đề #${pid}` };
-  const raw = localStorage.getItem(`iw:attempt:${pid}`);
-  if (!raw) return;
-  const a = JSON.parse(raw);
+  const prompt = prompts.find(function (item) { return item.id === pid; }) || { title: 'Đề bài #' + pid };
+  let attempt = null;
+
+  if (userId && remoteSubmissionCache[userId + ':' + pid]) {
+    attempt = remoteSubmissionCache[userId + ':' + pid];
+  } else {
+    const raw = localStorage.getItem('iw:attempt:' + pid);
+    if (raw) {
+      try { attempt = JSON.parse(raw); } catch (error) {}
+    }
+  }
+  if (!attempt) {
+    showToast('Không tìm thấy bản bài viết này trong bộ nhớ hiện tại.');
+    return;
+  }
 
   const container = document.getElementById('submissionModalContent');
-  document.getElementById('submissionModalTitle').textContent = `Bài làm của đề [${pid.toUpperCase()}]`;
+  const title = document.getElementById('submissionModalTitle');
+  title.textContent = 'Bài làm của đề [' + pid.toUpperCase() + ']';
 
   const blocksInfo = [
     { key: 'intro', label: '1. Mở bài (Introduction)' },
@@ -410,24 +453,22 @@ window.viewSubmissionDetail = function(pid) {
     { key: 'conclusion', label: '4. Kết bài (Conclusion)' }
   ];
 
-  container.innerHTML = `
-    <p style="margin:0 0 16px;color:var(--admin-ink-soft);font-size:0.95rem;"><strong>Đề bài:</strong> ${p.title}</p>
-    ${blocksInfo.map(b => {
-      const text = (a.texts && a.texts[b.key]) || '';
-      const fb = (a.feedback && a.feedback[b.key]) || null;
-      return `
-        <div style="background:#F8FAFC;border:1px solid var(--admin-border);border-radius:12px;padding:16px;margin-bottom:14px;">
-          <h4 style="margin:0 0 8px;font-size:0.95rem;">${b.label}</h4>
-          <p style="margin:0 0 10px;font-style:${text ? 'normal' : 'italic'};color:${text ? 'var(--admin-ink)' : 'var(--admin-ink-soft)'};line-height:1.6;white-space:pre-wrap;">${text || '(Chưa viết đoạn này)'}</p>
-          ${fb && fb.band_estimate ? `
-            <div style="border-top:1px dashed var(--admin-border);padding-top:8px;font-size:0.85rem;">
-              <span class="badge-tag badge-edu">Band: ${fb.band_estimate}</span>
-              ${fb.summary ? `<span style="margin-left:8px;color:var(--admin-ink-soft);">${fb.summary}</span>` : ''}
-            </div>` : ''}
-        </div>
-      `;
-    }).join('')}
-  `;
+  container.innerHTML = '<p style="margin:0 0 16px;color:var(--admin-ink-soft);font-size:0.95rem;"><strong>Đề bài:</strong> ' + escapeHtmlAdmin(prompt.title) + '</p>' +
+    blocksInfo.map(function (block) {
+      const text = (attempt.texts && attempt.texts[block.key]) || '';
+      const fb = (attempt.feedback && attempt.feedback[block.key]) || null;
+      let feedbackHtml = '';
+      if (fb && fb.band_estimate && !fb.stale && !fb.error) {
+        feedbackHtml = '<div style="border-top:1px dashed var(--admin-border);padding-top:8px;font-size:0.85rem;">' +
+          '<span class="badge-tag badge-edu">Band: ' + escapeHtmlAdmin(fb.band_estimate) + '</span>' +
+          (fb.summary ? '<span style="margin-left:8px;color:var(--admin-ink-soft);">' + escapeHtmlAdmin(fb.summary) + '</span>' : '') +
+          '</div>';
+      }
+      return '<div style="background:#F8FAFC;border:1px solid var(--admin-border);border-radius:12px;padding:16px;margin-bottom:14px;">' +
+        '<h4 style="margin:0 0 8px;font-size:0.95rem;">' + escapeHtmlAdmin(block.label) + '</h4>' +
+        '<p style="margin:0 0 10px;font-style:' + (text ? 'normal' : 'italic') + ';color:' + (text ? 'var(--admin-ink)' : 'var(--admin-ink-soft)') + ';line-height:1.6;white-space:pre-wrap;">' + escapeHtmlAdmin(text || '(Chưa viết đoạn này)') + '</p>' +
+        feedbackHtml + '</div>';
+    }).join('');
 
   openModal('submissionModal');
 };
