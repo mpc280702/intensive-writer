@@ -232,3 +232,7 @@ const DataManager = {
 // Global variables initialized
 let PROMPTS = DataManager.getPrompts();
 let IDEAS = DataManager.getAllIdeas();
+
+
+// Expose the manager for the learner and admin bootstrap flows.
+window.DataManager = DataManager;
