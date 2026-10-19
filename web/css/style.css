@@ -429,3 +429,12 @@ textarea.writing-area:focus { outline: none; border-color: var(--sunflower); box
   opacity: 0; pointer-events: none; transition: opacity .25s ease, transform .25s ease; z-index: 120; max-width: 90vw; text-align: center;
 }
 .save-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+
+/* Account/auth feedback */
+.auth-message { min-height: 1.2em; margin: 12px 0 0; color: var(--ink-soft); font-size: .86rem; line-height: 1.5; }
+.auth-message.error { color: #b42318; }
+#accountLoginForm label { line-height: 1.5; }
+#accountLoginForm .input-field { width: 100%; margin-top: 6px; }
+#logoutAccountBtn[hidden], #registerAccountBtn[hidden] { display: none !important; }
+.save-toast { max-width: min(620px, 90vw); }
