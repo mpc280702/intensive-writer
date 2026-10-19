@@ -34,6 +34,16 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type']
 }));
+app.use(function verifyOriginForWrites(req, res, next) {
+  if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
+    const origin = req.headers.origin;
+    if (origin && !allowedOrigins.has(origin)) {
+      return res.status(403).json({ error: 'ORIGIN_NOT_ALLOWED' });
+    }
+  }
+  next();
+});
+
 app.use(express.json({ limit: '1mb' }));
 
 function cookieValue(req, name) {
