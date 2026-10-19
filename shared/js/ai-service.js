@@ -1,51 +1,17 @@
 // AI Service: Supports Claude Anthropic API with intelligent offline fallback engine
 
 const AIService = {
-  getApiKey() {
-    return localStorage.getItem('iw:anthropic_key') || '';
-  },
-  setApiKey(key) {
-    if (key) {
-      localStorage.setItem('iw:anthropic_key', key.trim());
-    } else {
-      localStorage.removeItem('iw:anthropic_key');
-    }
-  },
   isConfigured() {
-    return Boolean(this.getApiKey());
+    return Boolean(window.IWApi && window.IWApi.isConfigured() && window.IWAuth && window.IWAuth.currentUser);
   },
 
   async callClaude(systemPrompt, userPrompt, maxTokens = 1000) {
-    const apiKey = this.getApiKey();
-    if (!apiKey) {
-      throw new Error('NO_API_KEY');
-    }
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    if (!this.isConfigured()) throw new Error('SERVER_AI_NOT_CONFIGURED');
+    const response = await window.IWApi.request('/api/ai/claude', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: maxTokens,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }]
-      })
+      body: JSON.stringify({ systemPrompt, userPrompt, maxTokens })
     });
-
-    if (!response.ok) {
-      const errBody = await response.json().catch(() => ({}));
-      throw new Error(errBody.error?.message || `HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    const text = (data.content || []).filter(c => c.type === 'text').map(c => c.text).join('\n');
-    const clean = text.replace(/```json|```/g, '').trim();
-    return JSON.parse(clean);
+    return response.result;
   },
 
   // 1. Explore idea
