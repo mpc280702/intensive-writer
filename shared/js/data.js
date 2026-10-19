@@ -163,6 +163,7 @@ const DataManager = {
   savePrompts(prompts) {
     localStorage.setItem('iw:custom_prompts', JSON.stringify(prompts));
     window.PROMPTS = prompts;
+    this.pushRemote().catch(function (error) { console.warn('[course-content] cloud save failed; local copy is kept.', error); });
   },
 
   getAllIdeas() {
@@ -188,6 +189,35 @@ const DataManager = {
   saveIdeas(allIdeas) {
     localStorage.setItem('iw:custom_ideas', JSON.stringify(allIdeas));
     window.IDEAS = allIdeas;
+    this.pushRemote().catch(function (error) { console.warn('[course-content] cloud save failed; local copy is kept.', error); });
+  },
+
+  async syncRemote() {
+    if (!window.IWApi || !window.IWApi.isConfigured() || !window.IWAuth || !window.IWAuth.currentUser) return false;
+    try {
+      const remote = await window.IWApi.request('/api/course-content');
+      if (Array.isArray(remote.prompts) && remote.ideas && typeof remote.ideas === 'object') {
+        localStorage.setItem('iw:custom_prompts', JSON.stringify(remote.prompts));
+        localStorage.setItem('iw:custom_ideas', JSON.stringify(remote.ideas));
+        window.PROMPTS = remote.prompts;
+        window.IDEAS = { ...DEFAULT_IDEAS, ...remote.ideas };
+        return true;
+      }
+      if (window.IWAuth.currentUser.role === 'admin') return await this.pushRemote();
+      return false;
+    } catch (error) {
+      console.warn('[course-content] using local/default course content.', error);
+      return false;
+    }
+  },
+
+  async pushRemote() {
+    if (!window.IWApi || !window.IWApi.isConfigured() || !window.IWAuth || !window.IWAuth.currentUser || window.IWAuth.currentUser.role !== 'admin') return false;
+    await window.IWApi.request('/api/course-content', {
+      method: 'PUT',
+      body: JSON.stringify({ prompts: this.getPrompts(), ideas: this.getAllIdeas() })
+    });
+    return true;
   },
 
   resetToDefault() {
@@ -195,6 +225,7 @@ const DataManager = {
     localStorage.removeItem('iw:custom_ideas');
     window.PROMPTS = DEFAULT_PROMPTS;
     window.IDEAS = DEFAULT_IDEAS;
+    this.pushRemote().catch(function (error) { console.warn('[course-content] reset could not sync.', error); });
   }
 };
 
