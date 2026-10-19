@@ -366,7 +366,7 @@ function renderDrawerContent(idea, promptTitle, exploration, isSelected) {
   if (exploration.error) {
     return `
       <div class="drawer-header">
-        <h3>${idea.text}</h3>
+        <h3>${escapeHtml(idea.text)}</h3>
         <button class="drawer-close" id="drawerClose">✕</button>
       </div>
       <div class="drawer-body">
@@ -379,7 +379,7 @@ function renderDrawerContent(idea, promptTitle, exploration, isSelected) {
     <div class="drawer-header">
       <div>
         <span class="badge badge-side" style="margin-bottom:6px;display:inline-block;">${idea.side === 'body1' ? 'Thân bài 1' : 'Thân bài 2'}</span>
-        <h3>${idea.text}</h3>
+        <h3>${escapeHtml(idea.text)}</h3>
       </div>
       <button class="drawer-close" id="drawerClose">✕</button>
     </div>
@@ -884,8 +884,8 @@ function openFullEssayModal() {
 
   wordCountSpan.textContent = `${totalWords} từ (Khuyến nghị chuẩn Task 2: 250 - 320 từ)`;
   modalContent.innerHTML = `
-    <h4 style="margin:0 0 10px;color:var(--denim);font-size:0.9rem;text-transform:uppercase;">${prompt.type}</h4>
-    <h3 style="margin:0 0 18px;font-size:1.15rem;">${prompt.title}</h3>
+    <h4 style="margin:0 0 10px;color:var(--denim);font-size:0.9rem;text-transform:uppercase;">${escapeHtml(prompt.type)}</h4>
+    <h3 style="margin:0 0 18px;font-size:1.15rem;">${escapeHtml(prompt.title)}</h3>
     <div style="background:var(--paper-warm);border:1px solid var(--line);border-radius:14px;padding:20px;font-size:1rem;line-height:1.75;white-space:pre-wrap;">${escapeHtml(fullEssay)}</div>
   `;
 
@@ -1006,7 +1006,7 @@ function renderDashboard() {
         <h4>Các lỗi ngữ pháp cần lưu tâm</h4>
         ${errorEntries.length ? errorEntries.map(([k, v]) => `
           <div class="tag-row">
-            <span>${k}</span>
+            <span>${escapeHtml(k)}</span>
             <span class="cnt">${v} lần</span>
           </div>`).join('') : '<div class="empty-note">Chưa có dữ liệu — hãy hoàn thành một đoạn văn để nhận feedback đầu tiên.</div>'}
       </div>
