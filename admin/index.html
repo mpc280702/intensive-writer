@@ -11,14 +11,18 @@
 </head>
 <body>
 
-  <!-- Auth Gate (Mã PIN bảo vệ) -->
+  <!-- Server-side admin authentication; no client-side PIN. -->
   <div id="authGate" class="auth-gate">
     <div class="auth-card">
       <div class="auth-icon">🌻</div>
-      <h2>Quản Trị Viên</h2>
-      <p>Vui lòng nhập mã PIN quản trị để tiếp tục (Mặc định: <strong>admin123</strong>)</p>
+      <h2>Quản trị viên</h2>
+      <p>Đăng nhập bằng email và mật khẩu được cấu hình trên API server.</p>
       <form id="pinForm">
-        <input type="password" id="pinInput" class="pin-input" placeholder="••••••••" autofocus required>
+        <label class="admin-login-label" for="adminEmailInput">Email quản trị</label>
+        <input type="email" id="adminEmailInput" class="pin-input" placeholder="admin@example.com" autocomplete="username" required>
+        <label class="admin-login-label" for="adminPasswordInput">Mật khẩu</label>
+        <input type="password" id="adminPasswordInput" class="pin-input" placeholder="Mật khẩu quản trị" autocomplete="current-password" required>
+        <p id="adminAuthMessage" class="auth-message" role="status" aria-live="polite"></p>
         <button type="submit" class="btn-primary" style="width:100%;justify-content:center;padding:12px;">Đăng nhập quản trị</button>
       </form>
       <p style="margin-top:16px;margin-bottom:0;"><a href="../web/" style="color:var(--admin-ink-soft);text-decoration:none;font-size:0.85rem;">← Quay lại trang Luyện viết</a></p>
@@ -238,20 +242,17 @@
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-            <!-- AI Settings -->
+            <!-- Server-side AI and account security -->
             <div class="metric-card" style="gap:14px;">
-              <h4 style="margin:0;">🤖 Khóa API Claude Anthropic</h4>
-              <p style="margin:0;font-size:0.88rem;color:var(--admin-ink-soft);">Dùng chung cho toàn hệ thống khi phân tích ý tưởng và chấm bài.</p>
-              <input type="password" id="adminApiKeyInput" class="search-input" placeholder="sk-ant-api03-...">
-              <button id="saveAdminApiKeyBtn" class="btn-primary btn-sm" style="align-self:flex-start;">Lưu Khóa API</button>
+              <h4 style="margin:0;">🤖 AI server</h4>
+              <p style="margin:0;font-size:0.88rem;color:var(--admin-ink-soft);">Khóa ANTHROPIC_API_KEY chỉ được thiết lập trong Environment Variables của backend. Không nhập hoặc lưu khóa API trong trình duyệt.</p>
+              <p id="adminApiStatus" style="margin:0;font-size:0.88rem;color:var(--admin-ink-soft);">Trạng thái AI được xác định từ API server.</p>
             </div>
 
-            <!-- PIN Security -->
             <div class="metric-card" style="gap:14px;">
-              <h4 style="margin:0;">🔒 Đổi mã PIN quản trị</h4>
-              <p style="margin:0;font-size:0.88rem;color:var(--admin-ink-soft);">Bảo vệ trang quản trị viên này.</p>
-              <input type="password" id="newPinInput" class="search-input" placeholder="Nhập mã PIN mới...">
-              <button id="saveNewPinBtn" class="btn-secondary btn-sm" style="align-self:flex-start;">Cập nhật mã PIN</button>
+              <h4 style="margin:0;">🔒 Bảo mật quản trị</h4>
+              <p style="margin:0;font-size:0.88rem;color:var(--admin-ink-soft);">Quyền quản trị được xác thực ở server. Tài khoản admin đầu tiên được tạo từ ADMIN_EMAIL và ADMIN_PASSWORD khi backend khởi động lần đầu.</p>
+              <p style="margin:0;font-size:0.88rem;color:var(--admin-ink-soft);">Hãy dùng mật khẩu mạnh, bật HTTPS và không chia sẻ phiên đăng nhập quản trị.</p>
             </div>
 
             <!-- Backup & Export -->
@@ -368,6 +369,8 @@
   <div id="adminToast" class="admin-toast"></div>
 
   <!-- Application Scripts -->
+  <script src="../shared/js/config.js"></script>
+  <script src="../shared/js/api-client.js"></script>
   <script src="../shared/js/storage.js"></script>
   <script src="../shared/js/data.js"></script>
   <script src="js/admin.js"></script>
