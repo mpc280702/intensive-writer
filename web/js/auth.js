@@ -53,7 +53,10 @@
         body: JSON.stringify({ email: email, password: password })
       });
       this.currentUser = result.user;
-      if (window.storage) window.storage.setUser(this.currentUser.id);
+      if (window.storage) {
+        window.storage.setUser(this.currentUser.id);
+        await window.storage.migrateGuestToUser(this.currentUser.id).catch(function () {});
+      }
       window.location.reload();
     },
     async register(email, password) {
@@ -62,7 +65,10 @@
         body: JSON.stringify({ email: email, password: password })
       });
       this.currentUser = result.user;
-      if (window.storage) window.storage.setUser(this.currentUser.id);
+      if (window.storage) {
+        window.storage.setUser(this.currentUser.id);
+        await window.storage.migrateGuestToUser(this.currentUser.id).catch(function () {});
+      }
       window.location.reload();
     },
     async logout() {
