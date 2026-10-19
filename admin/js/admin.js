@@ -1,4 +1,5 @@
 /* Intensive Writer - Admin Portal Logic */
+try { localStorage.removeItem('iw:admin_pin'); sessionStorage.removeItem('iw:admin_authenticated'); localStorage.removeItem('iw:anthropic_key'); } catch (error) {}
 
 function escapeHtmlAdmin(value) {
   return String(value == null ? '' : value)
