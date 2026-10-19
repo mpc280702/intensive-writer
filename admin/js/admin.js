@@ -1,14 +1,5 @@
 /* Intensive Writer - Admin Portal Logic */
 
-const DEFAULT_PIN = 'admin123';
-
-function getAdminPin() {
-  return localStorage.getItem('iw:admin_pin') || DEFAULT_PIN;
-}
-function setAdminPin(newPin) {
-  localStorage.setItem('iw:admin_pin', newPin.trim());
-}
-
 function showToast(msg) {
   const toast = document.getElementById('adminToast');
   if (!toast) return;
@@ -27,45 +18,83 @@ function closeModal(id) {
 }
 
 /* ---------------- AUTHENTICATION ---------------- */
-function initAuth() {
+async function initAuth() {
   const authGate = document.getElementById('authGate');
   const adminApp = document.getElementById('adminApp');
-  const pinForm = document.getElementById('pinForm');
-  const pinInput = document.getElementById('pinInput');
+  const loginForm = document.getElementById('pinForm');
+  const emailInput = document.getElementById('adminEmailInput');
+  const passwordInput = document.getElementById('adminPasswordInput');
+  const message = document.getElementById('adminAuthMessage');
   const logoutBtn = document.getElementById('logoutBtn');
 
-  const isAuthenticated = sessionStorage.getItem('iw:admin_authenticated') === 'true';
-
-  if (isAuthenticated) {
-    authGate.style.display = 'none';
-    adminApp.style.display = 'flex';
-  } else {
+  function setMessage(text, isError) {
+    message.textContent = text || '';
+    message.classList.toggle('error', Boolean(isError));
+  }
+  function showGate(text, isError) {
     authGate.style.display = 'flex';
     adminApp.style.display = 'none';
+    if (text) setMessage(text, isError);
+  }
+  async function enterAdmin() {
+    authGate.style.display = 'none';
+    adminApp.style.display = 'flex';
+    if (window.DataManager && window.DataManager.syncRemote) await window.DataManager.syncRemote();
+    initAdminData();
+    return true;
   }
 
-  pinForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const entered = pinInput.value.trim();
-    if (entered === getAdminPin()) {
-      sessionStorage.setItem('iw:admin_authenticated', 'true');
-      authGate.style.display = 'none';
-      adminApp.style.display = 'flex';
-      initAdminData();
-      showToast('Đăng nhập quản trị thành công! 🌻');
-    } else {
-      alert('Mã PIN không chính xác! Vui lòng thử lại.');
-      pinInput.value = '';
-      pinInput.focus();
+  authGate.style.display = 'flex';
+  adminApp.style.display = 'none';
+
+  if (!window.IWApi || !window.IWApi.isConfigured()) {
+    setMessage('API backend chưa được cấu hình. Hãy sửa shared/js/config.js và triển khai server.', true);
+  } else {
+    try {
+      const session = await window.IWApi.request('/api/auth/me');
+      if (session.user && session.user.role === 'admin') {
+        await enterAdmin();
+      } else {
+        showGate('Tài khoản hiện tại không có quyền quản trị. Hãy đăng nhập bằng tài khoản admin.', true);
+      }
+    } catch (error) {
+      setMessage('Đăng nhập bằng tài khoản được cấu hình trên API server.', false);
+    }
+  }
+
+  loginForm.addEventListener('submit', async function (event) {
+    event.preventDefault();
+    if (!window.IWApi || !window.IWApi.isConfigured()) {
+      setMessage('API backend chưa được cấu hình.', true);
+      return;
+    }
+    const submit = loginForm.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    setMessage('Đang xác thực…', false);
+    try {
+      const result = await window.IWApi.request('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: emailInput.value.trim(), password: passwordInput.value })
+      });
+      if (!result.user || result.user.role !== 'admin') {
+        await window.IWApi.request('/api/auth/logout', { method: 'POST', body: '{}' }).catch(function () {});
+        setMessage('Tài khoản này không có quyền quản trị.', true);
+        return;
+      }
+      window.location.reload();
+    } catch (error) {
+      setMessage(error.message === 'INVALID_CREDENTIALS' ? 'Email hoặc mật khẩu không chính xác.' : (error.message || 'Không thể đăng nhập.'), true);
+    } finally {
+      submit.disabled = false;
     }
   });
 
-  logoutBtn.addEventListener('click', () => {
-    sessionStorage.removeItem('iw:admin_authenticated');
-    authGate.style.display = 'flex';
-    adminApp.style.display = 'none';
-    pinInput.value = '';
-    showToast('Đã đăng xuất khỏi trang quản trị.');
+  logoutBtn.addEventListener('click', async function () {
+    logoutBtn.disabled = true;
+    if (window.IWApi && window.IWApi.isConfigured()) {
+      await window.IWApi.request('/api/auth/logout', { method: 'POST', body: '{}' }).catch(function () {});
+    }
+    window.location.reload();
   });
 }
 
@@ -402,9 +431,19 @@ window.viewSubmissionDetail = function(pid) {
 };
 
 /* ---------------- SETTINGS TAB ---------------- */
-function renderSettingsTab() {
-  const apiKey = localStorage.getItem('iw:anthropic_key') || '';
-  document.getElementById('adminApiKeyInput').value = apiKey;
+async function renderSettingsTab() {
+  const status = document.getElementById('adminApiStatus');
+  if (!status) return;
+  if (!window.IWApi || !window.IWApi.isConfigured()) {
+    status.textContent = 'API backend chưa được cấu hình.';
+    return;
+  }
+  try {
+    const health = await window.IWApi.request('/api/health');
+    status.textContent = health.aiConfigured ? 'AI đã cấu hình trên server.' : 'Chưa cấu hình ANTHROPIC_API_KEY trên server.';
+  } catch (error) {
+    status.textContent = 'Không lấy được trạng thái từ API server.';
+  }
 }
 
 /* ---------------- EVENT LISTENERS & CRUD BINDINGS ---------------- */
@@ -482,30 +521,6 @@ function initAdminData() {
     renderOverview();
   });
 
-  // Save Admin API Key
-  document.getElementById('saveAdminApiKeyBtn').addEventListener('click', () => {
-    const key = document.getElementById('adminApiKeyInput').value.trim();
-    if (key) {
-      localStorage.setItem('iw:anthropic_key', key);
-      showToast('Đã lưu khóa API Anthropic!');
-    } else {
-      localStorage.removeItem('iw:anthropic_key');
-      showToast('Đã xóa khóa API (Chuyển sang chế độ Offline AI)');
-    }
-  });
-
-  // Save New PIN
-  document.getElementById('saveNewPinBtn').addEventListener('click', () => {
-    const newPin = document.getElementById('newPinInput').value.trim();
-    if (!newPin || newPin.length < 4) {
-      alert('Vui lòng nhập mã PIN có ít nhất 4 ký tự!');
-      return;
-    }
-    setAdminPin(newPin);
-    document.getElementById('newPinInput').value = '';
-    showToast('Đã đổi mã PIN quản trị thành công!');
-  });
-
   // Export Data JSON
   document.getElementById('exportDataBtn').addEventListener('click', () => {
     const backup = {
@@ -543,8 +558,7 @@ function initAdminData() {
 }
 
 /* ---------------- INITIALIZATION ---------------- */
-document.addEventListener('DOMContentLoaded', () => {
-  initAuth();
+document.addEventListener('DOMContentLoaded', async function () {
   initTabs();
-  initAdminData();
+  await initAuth();
 });
