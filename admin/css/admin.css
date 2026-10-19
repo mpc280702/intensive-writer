@@ -234,3 +234,7 @@ html, body { margin: 0; padding: 0; background: var(--admin-bg); color: var(--ad
   z-index: 300; opacity: 0; transform: translateY(12px); transition: all 0.2s ease; pointer-events: none;
 }
 .admin-toast.show { opacity: 1; transform: translateY(0); }
+
+.admin-login-label{display:block;text-align:left;font-size:.88rem;font-weight:600;margin:12px 0 6px;color:var(--admin-ink)}
+.auth-message{min-height:1.2em;font-size:.85rem;line-height:1.45;color:var(--admin-ink-soft)}
+.auth-message.error{color:#b42318}
