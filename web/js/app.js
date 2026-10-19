@@ -542,7 +542,7 @@ function renderOutline(el) {
       <button class="back-btn" id="backToIdeasBank" title="Quay lại chọn ý">←</button>
       <div class="section-label" style="margin:0;">Dàn ý bài viết (Essay Outline)</div>
     </div>
-    <p class="prompt-title-recap"><strong>${prompt.type}:</strong> ${prompt.title}</p>
+    <p class="prompt-title-recap"><strong>${escapeHtml(prompt.type)}:</strong> ${escapeHtml(prompt.title)}</p>
     <div class="outline-card">
       <div class="outline-block">
         <h5>Thesis Statement (Luận điểm tổng quát)</h5>
@@ -604,7 +604,7 @@ function renderWriting(el) {
       <button class="back-btn" id="backToOutline" title="Quay lại dàn ý">←</button>
       <div class="section-label" style="margin:0;">Luyện viết từng đoạn</div>
     </div>
-    <p class="prompt-title-recap"><strong>${prompt.type}:</strong> ${prompt.title}</p>
+    <p class="prompt-title-recap"><strong>${escapeHtml(prompt.type)}:</strong> ${escapeHtml(prompt.title)}</p>
     ${a.outline ? `
       <div class="outline-recap">
         <span class="outline-recap-label">Thesis:</span>
@@ -749,7 +749,7 @@ function renderWriting(el) {
 function renderFeedbackHTML(fb) {
   if (!fb) return '';
   if (fb.loading) {
-    return `<div class="feedback-box"><div class="loading-line"><span class="spinner"></span>Đang phân tích ngữ pháp, từ vựng và ước lượng band...</div></div>`;
+    return `<div class="feedback-box"><div class="loading-line"><span class="spinner"></span>Đang phân tích ngữ pháp, cách dùng từ và ý nghĩa...</div></div>`;
   }
   if (fb.error) {
     return '<div class="feedback-box"><div class="err-msg">Không thể lấy feedback lúc này. Vui lòng thử lại.</div></div>';
@@ -896,6 +896,12 @@ function openFullEssayModal() {
     link.download = `IELTS_Writing_${practice.promptId}.txt`;
     link.click();
   };
+}
+
+function closeModals() {
+  document.querySelectorAll('.modal-backdrop').forEach(function (modal) {
+    modal.classList.remove('open');
+  });
 }
 
 /* ---------------- DASHBOARD ---------------- */
