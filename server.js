@@ -295,7 +295,7 @@ app.post('/api/ai/claude', requireAuth, aiLimiter, async function (req, res) {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
+        model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5',
         max_tokens: maxTokens,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }]
