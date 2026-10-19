@@ -261,7 +261,7 @@ Keep arrays to at most 4 items each. If there are no issues in a category, retur
     }
 
     return {
-      band_estimate: band,
+      band_estimate: null, // Offline heuristics do not provide a valid IELTS band score.
       grammar_issues: grammarIssues.slice(0, 3),
       vocab_issues: vocabIssues.slice(0, 3),
       good_phrases: goodPhrases.slice(0, 3),
