@@ -91,3 +91,8 @@ web mp/
 ├── package.json          # Thiết lập npm start / dev
 └── README.md             # Tài liệu hướng dẫn sử dụng
 ```
+
+
+## Bản sửa bảo mật và đồng bộ
+
+Xem [DEPLOYMENT_SECURITY.md](./DEPLOYMENT_SECURITY.md) để triển khai nhánh `fix/secure-persistence-renderer`, cấu hình API backend, PostgreSQL, đăng nhập Admin và đồng bộ tiến độ học viên. GitHub Pages vẫn chỉ là frontend tĩnh; backend cần được triển khai riêng.
