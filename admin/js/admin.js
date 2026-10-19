@@ -36,7 +36,9 @@ async function initAuth() {
     adminApp.style.display = 'none';
     if (text) setMessage(text, isError);
   }
-  async function enterAdmin() {
+  async function enterAdmin(user) {
+    window.IWAuth = { currentUser: user };
+    if (window.storage && user) window.storage.setUser(user.id);
     authGate.style.display = 'none';
     adminApp.style.display = 'flex';
     if (window.DataManager && window.DataManager.syncRemote) await window.DataManager.syncRemote();
@@ -53,7 +55,7 @@ async function initAuth() {
     try {
       const session = await window.IWApi.request('/api/auth/me');
       if (session.user && session.user.role === 'admin') {
-        await enterAdmin();
+        await enterAdmin(session.user);
       } else {
         showGate('Tài khoản hiện tại không có quyền quản trị. Hãy đăng nhập bằng tài khoản admin.', true);
       }
