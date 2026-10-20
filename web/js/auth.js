@@ -282,7 +282,7 @@
     if (forgotPwdBtn) {
       forgotPwdBtn.addEventListener('click', function (e) {
         e.preventDefault();
-        auth.setMode('forgot');
+        auth.setMessage('Chức năng khôi phục mật khẩu chưa được kết nối. Vui lòng liên hệ quản trị viên.', true);
       });
     }
 
@@ -398,59 +398,34 @@
           }
         } catch (e) {}
       }
-      if (!cid) {
-        cid = localStorage.getItem('iw:google_client_id') || '';
-        if (cid) window.IW_CONFIG.googleClientId = cid;
-      }
+      // Client ID must come from the site configuration or the backend health endpoint.
       return cid;
-    }
-
-    async function doQuickGoogleAdminLogin() {
-      try {
-        auth.setMessage('Đang kết nối tài khoản Google…', false);
-        if (googleBtn) googleBtn.disabled = true;
-        const result = await window.IWApi.request('/api/auth/google-quick-admin', {
-          method: 'POST'
-        });
-        auth.currentUser = result.user;
-        if (window.storage) {
-          window.storage.setUser(auth.currentUser.id);
-          await window.storage.migrateGuestToUser(auth.currentUser.id).catch(function () {});
-        }
-        if (window.toast) window.toast('✅ Đăng nhập Quản trị viên Google thành công! Đang chuyển đến trang Admin…');
-        auth.setMessage('✅ Đăng nhập thành công! Đang chuyển hướng đến trang Quản trị…', false);
-        setTimeout(function () {
-          window.location.href = new URL('../admin/', window.location.href).href;
-        }, 600);
-      } catch (err) {
-        console.error('Quick Google Admin failed:', err);
-        auth.setMessage('Không thể đăng nhập Google: ' + (err.message || 'Lỗi kết nối'), true);
-      } finally {
-        if (googleBtn) googleBtn.disabled = false;
-      }
     }
 
     async function handleGoogleCredential(response) {
       if (!response || !response.credential) return;
       try {
-        auth.setMessage('Đang xác thực tài khoản Google…', false);
+        auth.setMessage('Đang xác minh tài khoản Google…', false);
         const result = await window.IWApi.request('/api/auth/google', {
           method: 'POST',
-          body: JSON.stringify({ credential: response.credential, asAdmin: true })
+          body: JSON.stringify({ credential: response.credential })
         });
         auth.currentUser = result.user;
         if (window.storage) {
           window.storage.setUser(auth.currentUser.id);
           await window.storage.migrateGuestToUser(auth.currentUser.id).catch(function () {});
         }
-        if (window.toast) window.toast('✅ Đăng nhập Google thành công! Đang chuyển đến trang Admin…');
-        auth.setMessage('✅ Đăng nhập thành công! Đang chuyển hướng đến trang Quản trị…', false);
-        setTimeout(function () {
-          window.location.href = new URL('../admin/', window.location.href).href;
-        }, 600);
+        if (auth.currentUser.role === 'admin') {
+          auth.setMessage('Đăng nhập quản trị thành công. Đang chuyển trang…', false);
+          setTimeout(function () { window.location.href = new URL('../admin/', window.location.href).href; }, 500);
+        } else {
+          if (window.toast) window.toast('✅ Đăng nhập Google thành công!');
+          auth.setMessage('Đăng nhập thành công. Đang tải dữ liệu học tập…', false);
+          setTimeout(function () { window.location.reload(); }, 500);
+        }
       } catch (err) {
-        console.error('Google auth failed:', err);
-        auth.setMessage('Không thể xác thực Google: ' + (err.message || 'Lỗi xác thực'), true);
+        console.error('[google] sign-in failed:', err);
+        auth.setMessage(err.message || 'Không thể xác minh tài khoản Google. Vui lòng thử lại.', true);
       }
     }
 
@@ -464,6 +439,14 @@
           cancel_on_tap_outside: true
         });
         googleGisInitialized = true;
+        if (googleBtn && window.google.accounts.id.renderButton) {
+          googleBtn.replaceChildren();
+          const width = Math.max(220, Math.min(360, (googleBtn.parentElement && googleBtn.parentElement.clientWidth) || 320));
+          window.google.accounts.id.renderButton(googleBtn, {
+            type: 'standard', theme: 'outline', size: 'large', text: 'continue_with',
+            shape: 'rectangular', logo_alignment: 'left', locale: 'vi', width: width
+          });
+        }
         return true;
       } catch (err) {
         console.warn('[google] GIS initialize error:', err);
@@ -471,45 +454,34 @@
       }
     }
 
-    // Try initializing GIS once page and script load
+    // Render the official Google Sign-In button. Never fall back to email-only or quick-admin login.
     getGoogleClientId().then(function (cid) {
-      if (cid) {
-        const checkTimer = setInterval(function () {
-          if (window.google && window.google.accounts && window.google.accounts.id) {
-            clearInterval(checkTimer);
-            initGisClient(cid);
-          }
-        }, 200);
-        setTimeout(function () { clearInterval(checkTimer); }, 8000);
+      if (!window.IWApi || !window.IWApi.isConfigured()) {
+        if (googleBtn) {
+          googleBtn.textContent = 'Cần cấu hình API backend để đăng nhập Google';
+          googleBtn.classList.add('google-signin-unconfigured');
+        }
+        return;
       }
+      if (!cid) {
+        if (googleBtn) {
+          googleBtn.textContent = 'Google Sign-In chưa được cấu hình';
+          googleBtn.classList.add('google-signin-unconfigured');
+        }
+        return;
+      }
+      const tryRender = function () {
+        if (window.google && window.google.accounts && window.google.accounts.id) {
+          clearInterval(checkTimer);
+          initGisClient(cid);
+        }
+      };
+      const checkTimer = setInterval(tryRender, 200);
+      tryRender();
+      setTimeout(function () { clearInterval(checkTimer); }, 10000);
     });
 
-    if (googleBtn) {
-      googleBtn.addEventListener('click', async function () {
-        const cid = await getGoogleClientId();
-
-        // If client ID is configured and GIS library is loaded, prompt Google One Tap / GIS
-        if (cid && window.google && window.google.accounts && window.google.accounts.id) {
-          if (!googleGisInitialized) initGisClient(cid);
-          try {
-            window.google.accounts.id.prompt(function (notification) {
-              if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                console.warn('[google] GIS prompt not shown, fallback to quick admin:', notification.getNotDisplayedReason());
-                doQuickGoogleAdminLogin();
-              }
-            });
-          } catch (err) {
-            console.error('[google] Prompt error, fallback to quick admin:', err);
-            await doQuickGoogleAdminLogin();
-          }
-        } else {
-          // Fast-track: Đăng nhập Google 1 chạm vào thẳng trang Admin
-          await doQuickGoogleAdminLogin();
-        }
-      });
-    }
-
-    // Logged-in Profile View Handlers
+        // Logged-in Profile View Handlers
     const profileLogoutBtn = document.getElementById('profileLogoutBtn');
     const profileSwitchBtn = document.getElementById('profileSwitchBtn');
     const profileView = document.getElementById('authProfileView');
@@ -531,91 +503,7 @@
       });
     }
 
-    // Google Setup & Direct Registration Handlers
-    const setupModal = document.getElementById('googleSetupModal');
-    const closeSetupBtn = document.getElementById('closeGoogleSetupBtn');
-    const cancelSetupBtn = document.getElementById('cancelGoogleSetupBtn');
-    const saveClientIdBtn = document.getElementById('saveGoogleClientIdBtn');
-    const clientIdInput = document.getElementById('googleClientIdInput');
-    const directEmailInput = document.getElementById('googleDirectEmailInput');
-    const setupMsg = document.getElementById('googleSetupMsg');
-
-    if (closeSetupBtn && setupModal) closeSetupBtn.addEventListener('click', function () { setupModal.classList.remove('open'); });
-    if (cancelSetupBtn && setupModal) cancelSetupBtn.addEventListener('click', function () { setupModal.classList.remove('open'); });
-    if (setupModal) {
-      setupModal.addEventListener('click', function (e) {
-        if (e.target === setupModal) setupModal.classList.remove('open');
-      });
-    }
-
-    if (saveClientIdBtn) {
-      getGoogleClientId().then(function (cid) {
-        if (cid && clientIdInput) clientIdInput.value = cid;
-      });
-
-      saveClientIdBtn.addEventListener('click', async function () {
-        const customCid = clientIdInput ? clientIdInput.value.trim() : '';
-
-        // If user entered a valid Google OAuth Client ID, save and prompt GIS
-        if (customCid && customCid.includes('.apps.googleusercontent.com')) {
-          localStorage.setItem('iw:google_client_id', customCid);
-          window.IW_CONFIG.googleClientId = customCid;
-          initGisClient(customCid);
-          if (setupMsg) {
-            setupMsg.textContent = 'Đã lưu Client ID thành công! Đang kích hoạt Google…';
-            setupMsg.classList.remove('error');
-          }
-          setTimeout(function () {
-            if (setupModal) setupModal.classList.remove('open');
-            if (window.toast) window.toast('✅ Đã kích hoạt Google Sign-In!');
-            if (window.google && window.google.accounts && window.google.accounts.id) {
-              window.google.accounts.id.prompt();
-            }
-          }, 700);
-          return;
-        }
-
-        // Otherwise, perform direct registration with their Gmail
-        const gmail = directEmailInput ? directEmailInput.value.trim().toLowerCase() : '';
-        if (!gmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(gmail)) {
-          if (setupMsg) {
-            setupMsg.textContent = 'Vui lòng nhập địa chỉ email hợp lệ.';
-            setupMsg.classList.add('error');
-          }
-          return;
-        }
-
-        try {
-          saveClientIdBtn.disabled = true;
-          if (setupMsg) {
-            setupMsg.textContent = 'Đang đăng ký / đăng nhập với ' + gmail + '…';
-            setupMsg.classList.remove('error');
-          }
-          const res = await window.IWApi.request('/api/auth/google-direct', {
-            method: 'POST',
-            body: JSON.stringify({ email: gmail, asAdmin: true })
-          });
-          auth.currentUser = res.user;
-          if (window.storage) {
-            window.storage.setUser(auth.currentUser.id);
-            await window.storage.migrateGuestToUser(auth.currentUser.id).catch(function () {});
-          }
-          if (setupModal) setupModal.classList.remove('open');
-          if (window.toast) window.toast('✅ Đăng nhập Google thành công (' + gmail + ')! Đang vào trang Admin…');
-          setTimeout(function () {
-            window.location.href = new URL('../admin/', window.location.href).href;
-          }, 600);
-        } catch (err) {
-          console.error('[auth] google direct failed:', err);
-          if (setupMsg) {
-            setupMsg.textContent = 'Không thể đăng nhập: ' + (err.message || 'Lỗi server');
-            setupMsg.classList.add('error');
-          }
-        } finally {
-          saveClientIdBtn.disabled = false;
-        }
-      });
-    }
+    // Google Client ID is administrator-configured; typing an email is never a Google authentication method.
 
     // Unified Form Submit (Login, Register & Forgot)
     if (loginForm) {
@@ -646,8 +534,9 @@
         const isRegister = auth.mode === 'register';
 
         if (isRegister) {
-          if (pwdConfirmInput && pwdConfirmInput.value && password !== pwdConfirmInput.value) {
-            return auth.setMessage('Mật khẩu xác nhận không khớp.', true);
+          if (password.length < 10) return auth.setMessage('Mật khẩu đăng ký phải có ít nhất 10 ký tự.', true);
+          if (!pwdConfirmInput || !pwdConfirmInput.value || password !== pwdConfirmInput.value) {
+            return auth.setMessage('Vui lòng nhập và xác nhận mật khẩu giống nhau.', true);
           }
           if (agreeTerms && !agreeTerms.checked) {
             return auth.setMessage('Vui lòng đồng ý với Điều khoản sử dụng và Chính sách bảo mật.', true);

@@ -1622,3 +1622,28 @@ textarea.writing-area:focus { outline: none; border-color: var(--sunflower); box
   color: var(--ink-soft);
 }
 
+
+
+/* GOOGLE_OAUTH_VERIFIED_LOGIN_PATCH_V1: official Google Identity Services sign-in button */
+.google-signin-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 42px;
+  margin: 4px 0;
+}
+.google-signin-container > div,
+.google-signin-container iframe {
+  max-width: 100%;
+}
+.google-signin-unconfigured {
+  color: #64748B;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  text-align: center;
+  padding: 10px;
+  border: 1px dashed #CBD5E1;
+  border-radius: 10px;
+  background: #F8FAFC;
+}

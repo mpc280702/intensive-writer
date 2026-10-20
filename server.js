@@ -216,6 +216,7 @@ app.post('/api/auth/login', loginLimiter, async function (req, res) {
   if (!email || !password || password.length > 200) return res.status(400).json({ error: 'INVALID_CREDENTIALS' });
 
   if (!hasDb()) {
+    if (isProduction) return res.status(503).json({ error: 'DATABASE_NOT_CONFIGURED', message: 'Máy chủ chưa kết nối cơ sở dữ liệu; đăng nhập tạm thời bị khóa.' });
     const isMatchedAdmin = (email === localAdmin.email || email === 'admin@example.com') &&
       (password === localAdmin.password || password === 'admin12345678' || password === 'admin123' || password === 'admin');
     const isMatchedStudent = (email === 'student@example.com' || email === 'google.student@example.com') &&
@@ -279,169 +280,105 @@ app.post('/api/auth/google-demo', loginLimiter, async function (req, res) {
   }
 });
 
-app.post('/api/auth/google-quick-admin', loginLimiter, async function (req, res) {
-  const adminEmail = String(process.env.ADMIN_EMAIL || 'admin@example.com').trim().toLowerCase();
-  const name = 'Quản trị viên Google';
-
-  if (!hasDb()) {
-    const id = 'admin-google-quick';
-    const user = { id, email: adminEmail, role: 'admin', name };
-    const token = crypto.randomBytes(32).toString('base64url');
-    localSessions.set(hashToken(token), { user, expiresAt: Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000 });
-    setSessionCookie(res, token, SESSION_DAYS * 24 * 60 * 60);
-    return res.json({ user });
-  }
-
-  try {
-    let result = await queryDb('SELECT id, email, role FROM app_users WHERE email = ?', [adminEmail]);
-    let row = result.rows[0];
-    if (!row) {
-      const id = crypto.randomUUID ? crypto.randomUUID() : 'admin-' + crypto.randomBytes(6).toString('hex');
-      const passwordHash = await hashPassword(process.env.ADMIN_PASSWORD || 'admin12345678');
-      await queryDb('INSERT INTO app_users (id, email, password_hash, role) VALUES (?, ?, ?, ?)', [
-        id, adminEmail, passwordHash, 'admin'
-      ]);
-      row = { id, email: adminEmail, role: 'admin' };
-    } else if (row.role !== 'admin') {
-      await queryDb('UPDATE app_users SET role = "admin" WHERE id = ?', [row.id]);
-      row.role = 'admin';
-    }
-
-    const token = crypto.randomBytes(32).toString('base64url');
-    const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
-    await queryDb('INSERT INTO app_sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)', [
-      hashToken(token), row.id, expiresAt
-    ]);
-    setSessionCookie(res, token, SESSION_DAYS * 24 * 60 * 60);
-    console.log('[auth:google-quick-admin] Đăng nhập nhanh Quản trị viên Google thành công:', adminEmail);
-    return res.json({ user: { id: row.id, email: row.email, role: 'admin', name: name } });
-  } catch (err) {
-    console.error('[auth] google-quick-admin failed:', err.message);
-    res.status(500).json({ error: 'QUICK_ADMIN_FAILED', message: err.message });
-  }
+// GOOGLE_OAUTH_VERIFIED_LOGIN_PATCH_V1: removed insecure endpoint that granted an admin session without Google verification.
+app.post('/api/auth/google-quick-admin', loginLimiter, function (req, res) {
+  return res.status(410).json({ error: 'UNSAFE_AUTH_FLOW_DISABLED', message: 'Đăng nhập quản trị nhanh đã bị tắt. Hãy đăng nhập bằng tài khoản quản trị được xác minh.' });
 });
 
+// GOOGLE_OAUTH_VERIFIED_LOGIN_PATCH_V1: role is derived on the server; never trust a client-supplied asAdmin flag.
 app.post('/api/auth/google', loginLimiter, async function (req, res) {
+  const expectedClientId = String(process.env.GOOGLE_CLIENT_ID || '').trim();
+  if (!expectedClientId) {
+    return res.status(503).json({ error: 'GOOGLE_NOT_CONFIGURED', message: 'Google Sign-In chưa được cấu hình trên máy chủ.' });
+  }
+
   const credential = req.body && req.body.credential;
-  const asAdmin = Boolean(req.body && req.body.asAdmin);
-  if (!credential || typeof credential !== 'string') {
-    return res.status(400).json({ error: 'INVALID_CREDENTIAL', message: 'Thiếu Google credential token.' });
+  if (!credential || typeof credential !== 'string' || credential.length > 12000) {
+    return res.status(400).json({ error: 'INVALID_CREDENTIAL', message: 'Thiếu hoặc sai định dạng Google credential.' });
   }
 
   try {
+    // Google verifies the signed ID token and returns its claims. The audience must ALWAYS match our Web Client ID.
     const verifyUrl = 'https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(credential);
     const googleRes = await fetch(verifyUrl, { signal: AbortSignal.timeout(10000) });
     if (!googleRes.ok) {
       return res.status(401).json({ error: 'INVALID_GOOGLE_TOKEN', message: 'Token Google không hợp lệ hoặc đã hết hạn.' });
     }
-    const tokenInfo = await googleRes.json();
+    const claims = await googleRes.json();
+    const issuer = String(claims.iss || '');
+    const expiry = Number(claims.exp);
+    const emailVerified = claims.email_verified === true || String(claims.email_verified).toLowerCase() === 'true';
+    const audienceMatches = String(claims.aud || '') === expectedClientId && (!claims.azp || String(claims.azp) === expectedClientId);
+    const issuerMatches = issuer === 'accounts.google.com' || issuer === 'https://accounts.google.com';
 
-    if (process.env.GOOGLE_CLIENT_ID && tokenInfo.aud !== process.env.GOOGLE_CLIENT_ID) {
-      return res.status(401).json({ error: 'INVALID_AUDIENCE', message: 'Google Client ID không khớp.' });
+    if (!audienceMatches || !issuerMatches || !emailVerified || !claims.sub || !Number.isFinite(expiry) || expiry * 1000 <= Date.now()) {
+      return res.status(401).json({ error: 'GOOGLE_CLAIMS_INVALID', message: 'Không thể xác minh tài khoản Google cho website này.' });
     }
 
-    const email = String(tokenInfo.email || '').trim().toLowerCase();
-    const name = tokenInfo.name || tokenInfo.given_name || email.split('@')[0];
-    const googleSub = tokenInfo.sub || crypto.randomBytes(8).toString('hex');
-    const adminEmail = String(process.env.ADMIN_EMAIL || 'admin@example.com').trim().toLowerCase();
-    const targetRole = (asAdmin || email === adminEmail) ? 'admin' : 'student';
-
-    if (!email) {
-      return res.status(400).json({ error: 'EMAIL_NOT_PROVIDED', message: 'Không thể lấy email từ tài khoản Google.' });
+    const email = String(claims.email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(401).json({ error: 'GOOGLE_EMAIL_INVALID', message: 'Google không cung cấp địa chỉ email hợp lệ.' });
     }
+    const name = String(claims.name || claims.given_name || email.split('@')[0]).slice(0, 200);
+    const configuredAdminEmail = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+    const isConfiguredAdmin = Boolean(configuredAdminEmail) && email === configuredAdminEmail;
 
+    // Production must never issue ephemeral in-memory sessions or accept demo identities.
     if (!hasDb()) {
-      const id = 'google-' + googleSub;
-      const user = { id, email, role: targetRole, name };
+      if (isProduction) {
+        return res.status(503).json({ error: 'DATABASE_NOT_CONFIGURED', message: 'Máy chủ chưa kết nối cơ sở dữ liệu; đăng nhập tạm thời bị khóa.' });
+      }
+      const id = 'google-' + crypto.createHash('sha256').update(String(claims.sub)).digest('hex').slice(0, 32);
+      const user = { id, email, role: isConfiguredAdmin ? 'admin' : 'student', name };
       const token = crypto.randomBytes(32).toString('base64url');
       localSessions.set(hashToken(token), { user, expiresAt: Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000 });
       setSessionCookie(res, token, SESSION_DAYS * 24 * 60 * 60);
       return res.json({ user });
     }
 
-    let result = await queryDb('SELECT id, email, role FROM app_users WHERE email = ?', [email]);
-    let row = result.rows[0];
+    let found = await queryDb('SELECT id, email, role FROM app_users WHERE email = ?', [email]);
+    let row = found.rows[0];
+
     if (!row) {
-      const id = crypto.randomUUID ? crypto.randomUUID() : 'user-g-' + crypto.randomBytes(6).toString('hex');
-      const randomPwd = crypto.randomBytes(32).toString('hex');
-      const passwordHash = await hashPassword(randomPwd);
-      await queryDb('INSERT INTO app_users (id, email, password_hash, role) VALUES (?, ?, ?, ?)', [
-        id, email, passwordHash, targetRole
-      ]);
-      row = { id, email, role: targetRole };
-      console.log('[auth:google] Đã đăng ký tài khoản mới từ Google (' + targetRole + '):', email);
-    } else {
-      if (targetRole === 'admin' && row.role !== 'admin') {
-        await queryDb('UPDATE app_users SET role = "admin" WHERE id = ?', [row.id]);
-        row.role = 'admin';
+      if (!isConfiguredAdmin && process.env.ALLOW_STUDENT_SIGNUP !== 'true') {
+        return res.status(403).json({ error: 'REGISTRATION_DISABLED', message: 'Đăng ký học viên mới đang tắt. Vui lòng liên hệ quản trị viên.' });
       }
-      console.log('[auth:google] Tài khoản Google đăng nhập thành công (' + row.role + '):', email);
+      const id = crypto.randomUUID ? crypto.randomUUID() : 'google-' + crypto.randomBytes(12).toString('hex');
+      const randomPassword = crypto.randomBytes(32).toString('hex');
+      const passwordHash = await hashPassword(randomPassword);
+      const role = isConfiguredAdmin ? 'admin' : 'student';
+      try {
+        await queryDb('INSERT INTO app_users (id, email, password_hash, role) VALUES (?, ?, ?, ?)', [id, email, passwordHash, role]);
+        row = { id, email, role };
+      } catch (insertError) {
+        // Handle two simultaneous first sign-ins for the same email safely.
+        if (insertError.code !== '23505' && insertError.code !== 'ER_DUP_ENTRY') throw insertError;
+        found = await queryDb('SELECT id, email, role FROM app_users WHERE email = ?', [email]);
+        row = found.rows[0];
+        if (!row) throw insertError;
+      }
+    }
+
+    // Only the verified, explicitly configured admin email may receive the configured admin role.
+    if (isConfiguredAdmin && row.role !== 'admin') {
+      await queryDb('UPDATE app_users SET role = ? WHERE id = ?', ['admin', row.id]);
+      row.role = 'admin';
     }
 
     const token = crypto.randomBytes(32).toString('base64url');
     const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
-    await queryDb('INSERT INTO app_sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)', [
-      hashToken(token), row.id, expiresAt
-    ]);
+    await queryDb('INSERT INTO app_sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)', [hashToken(token), row.id, expiresAt]);
     setSessionCookie(res, token, SESSION_DAYS * 24 * 60 * 60);
-    return res.json({ user: { id: row.id, email: row.email, role: row.role, name: name } });
+    return res.json({ user: { id: row.id, email: row.email, role: row.role, name } });
   } catch (error) {
-    console.error('[auth:google] verification error:', error.message);
-    res.status(500).json({ error: 'GOOGLE_AUTH_FAILED', message: 'Xác thực Google thất bại: ' + error.message });
+    console.error('[auth:google] verification/sign-in failed:', error.message);
+    return res.status(500).json({ error: 'GOOGLE_AUTH_FAILED', message: 'Không thể hoàn tất đăng nhập Google. Vui lòng thử lại.' });
   }
 });
 
-app.post('/api/auth/google-direct', loginLimiter, async function (req, res) {
-  const email = String((req.body && req.body.email) || '').trim().toLowerCase();
-  const asAdmin = Boolean(req.body && req.body.asAdmin);
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: 'INVALID_EMAIL', message: 'Vui lòng nhập địa chỉ email hợp lệ.' });
-  }
-
-  const name = email.split('@')[0];
-  const adminEmail = String(process.env.ADMIN_EMAIL || 'admin@example.com').trim().toLowerCase();
-  const targetRole = (asAdmin || email === adminEmail) ? 'admin' : 'student';
-
-  if (!hasDb()) {
-    const id = 'student-' + crypto.randomBytes(4).toString('hex');
-    const token = crypto.randomBytes(32).toString('base64url');
-    const user = { id, email, role: targetRole, name };
-    localSessions.set(hashToken(token), { user, expiresAt: Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000 });
-    setSessionCookie(res, token, SESSION_DAYS * 24 * 60 * 60);
-    return res.json({ user });
-  }
-
-  try {
-    let result = await queryDb('SELECT id, email, role FROM app_users WHERE email = ?', [email]);
-    let row = result.rows[0];
-    if (!row) {
-      const id = crypto.randomUUID ? crypto.randomUUID() : 'user-' + crypto.randomBytes(6).toString('hex');
-      const randomPassword = crypto.randomBytes(16).toString('hex');
-      const passwordHash = await hashPassword(randomPassword);
-      await queryDb('INSERT INTO app_users (id, email, password_hash, role) VALUES (?, ?, ?, ?)', [
-        id, email, passwordHash, targetRole
-      ]);
-      row = { id, email, role: targetRole };
-      console.log('[auth:google-direct] Đã tạo tài khoản (' + targetRole + '):', email);
-    } else {
-      if (targetRole === 'admin' && row.role !== 'admin') {
-        await queryDb('UPDATE app_users SET role = "admin" WHERE id = ?', [row.id]);
-        row.role = 'admin';
-      }
-      console.log('[auth:google-direct] Đăng nhập thành công (' + row.role + '):', email);
-    }
-
-    const token = crypto.randomBytes(32).toString('base64url');
-    const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
-    await queryDb('INSERT INTO app_sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)', [
-      hashToken(token), row.id, expiresAt
-    ]);
-    setSessionCookie(res, token, SESSION_DAYS * 24 * 60 * 60);
-    res.json({ user: { id: row.id, email: row.email, role: row.role, name: name } });
-  } catch (err) {
-    console.error('[auth] google direct failed:', err.message);
-    res.status(500).json({ error: 'LOGIN_FAILED' });
-  }
+// GOOGLE_OAUTH_VERIFIED_LOGIN_PATCH_V1: email text alone is not proof of Google account ownership.
+app.post('/api/auth/google-direct', loginLimiter, function (req, res) {
+  return res.status(410).json({ error: 'UNSAFE_AUTH_FLOW_DISABLED', message: 'Không hỗ trợ đăng nhập bằng cách nhập email בלבד. Hãy dùng xác thực Google chính thức.' });
 });
 
 app.post('/api/auth/logout', async function (req, res) {
@@ -828,27 +765,44 @@ async function seedDefaultUsers() {
     }
   }
 
-  // Seed default student account
-  try {
-    const studentEmail = 'student@example.com';
-    const foundStudent = await queryDb('SELECT id FROM app_users WHERE email = ?', [studentEmail]);
-    if (!foundStudent.rows.length) {
-      const studentId = crypto.randomUUID ? crypto.randomUUID() : 'student-' + crypto.randomBytes(4).toString('hex');
-      await queryDb('INSERT INTO app_users (id, email, password_hash, role) VALUES (?, ?, ?, ?)', [
-        studentId,
-        studentEmail,
-        await hashPassword('student12345678'),
-        'student'
-      ]);
-      console.log('[startup] Đã tạo tài khoản Học viên mặc định (student@example.com) vào MySQL/Database.');
+  if (!isProduction) {
+    // Seed default student account
+    try {
+      const studentEmail = 'student@example.com';
+      const foundStudent = await queryDb('SELECT id FROM app_users WHERE email = ?', [studentEmail]);
+      if (!foundStudent.rows.length) {
+        const studentId = crypto.randomUUID ? crypto.randomUUID() : 'student-' + crypto.randomBytes(4).toString('hex');
+        await queryDb('INSERT INTO app_users (id, email, password_hash, role) VALUES (?, ?, ?, ?)', [
+          studentId,
+          studentEmail,
+          await hashPassword('student12345678'),
+          'student'
+        ]);
+        console.log('[startup] Đã tạo tài khoản Học viên mặc định (student@example.com) vào MySQL/Database.');
+      }
+    } catch (err) {
+      console.error('[startup] Lỗi khởi tạo student:', err.message);
     }
-  } catch (err) {
-    console.error('[startup] Lỗi khởi tạo student:', err.message);
   }
+
 }
 
 async function start() {
+  if (isProduction) {
+    const configuredAdminEmail = String(process.env.ADMIN_EMAIL || '').trim();
+    const configuredAdminPassword = String(process.env.ADMIN_PASSWORD || '');
+    const configuredGoogleClientId = String(process.env.GOOGLE_CLIENT_ID || '').trim();
+    if (!configuredAdminEmail || configuredAdminPassword.length < 16) {
+      throw new Error('Production requires ADMIN_EMAIL and ADMIN_PASSWORD with at least 16 characters.');
+    }
+    if (!configuredGoogleClientId) {
+      throw new Error('Production requires GOOGLE_CLIENT_ID for verified Google Sign-In.');
+    }
+  }
   await initDatabase();
+  if (isProduction && !hasDb()) {
+    throw new Error('Production requires a persistent PostgreSQL/MySQL database; in-memory fallback is disabled.');
+  }
   await seedDefaultUsers();
   setInterval(tryReconnectMysql, 5000);
   app.listen(PORT, function () { console.log('Intensive Writer API listening on port ' + PORT); });

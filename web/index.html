@@ -198,7 +198,7 @@
               <span class="auth-forgot-only">Email học viên</span>
             </label>
             <div class="auth-input-wrapper">
-              <input type="email" id="accountEmail" class="auth-input" value="student@example.com"
+              <input type="email" id="accountEmail" class="auth-input" 
                 placeholder="hocvien@example.com" autocomplete="username" required>
               <span class="auth-input-icon valid-icon" id="emailStatusIcon" title="Định dạng email">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -217,8 +217,8 @@
               <a href="#" class="auth-forgot-link auth-login-only" id="authForgotPwdBtn">Quên mật khẩu?</a>
             </div>
             <div class="auth-input-wrapper">
-              <input type="password" id="accountPassword" class="auth-input pwd-input" value="student12345678"
-                placeholder="Tối thiểu 10 ký tự" autocomplete="current-password" minlength="10">
+              <input type="password" id="accountPassword" class="auth-input pwd-input" 
+                placeholder="Nhập mật khẩu của bạn" autocomplete="current-password">
               <button type="button" class="auth-input-icon toggle-pwd" id="togglePasswordBtn"
                 aria-label="Hiện/ẩn mật khẩu">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -291,9 +291,7 @@
           </label>
 
           <!-- Quick hint (Login only) -->
-          <div class="auth-demo-hint-badge auth-login-only">
-            💡 <strong>Đăng nhập nhanh:</strong> Bấm nút <strong>Google</strong> (1 chạm) hoặc dùng tài khoản học viên
-            mẫu: <code>student@example.com</code> / <code>student12345678</code>
+          <div class="auth-demo-hint-badge auth-login-only">🔐 Đăng nhập an toàn: chọn nút Google chính thức để xác minh tài khoản. Không cần và không nên nhập Gmail để giả lập đăng nhập.</div>
           </div>
 
           <!-- Terms & Policy (Register only) -->
@@ -311,19 +309,7 @@
 
           <!-- Quick Action: Google (Login & Register) -->
           <div class="auth-quick-actions auth-login-reg-tabs">
-            <button type="button" class="auth-social-btn" id="authGoogleBtn">
-              <svg width="18" height="18" viewBox="0 0 24 24">
-                <path fill="#4285F4"
-                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.14z" />
-                <path fill="#34A853"
-                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.24v3.15C3.26 21.36 7.33 24 12 24z" />
-                <path fill="#FBBC05"
-                  d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.24C.45 8.15 0 9.92 0 12s.45 3.85 1.24 5.42l4.04-3.15z" />
-                <path fill="#EA4335"
-                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.24 6.58l4.04 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
-              </svg>
-              <span id="googleBtnText">Google</span>
-            </button>
+            <div class="google-signin-container" id="authGoogleBtn" aria-label="Đăng nhập bằng Google"></div>
           </div>
 
           <!-- Quick Action: Support (Forgot only) -->
@@ -354,45 +340,7 @@
     </div>
   </div>
 
-  <!-- Google OAuth & Direct Registration Modal -->
-  <div id="googleSetupModal" class="auth-modal-wrapper">
-    <div class="auth-modal-card">
-      <div class="auth-modal-head">
-        <div class="auth-title-group">
-          <h2 class="auth-main-title">Đăng ký bằng Google</h2>
-          <p class="auth-sub-title">Liên kết tài khoản Google để lưu trữ bài làm vào hệ thống</p>
-        </div>
-        <button type="button" class="auth-modal-close" id="closeGoogleSetupBtn">✕</button>
-      </div>
-      <div class="auth-modal-body">
-        <div class="auth-demo-hint-badge auth-google-hint">
-          🌻 Nhập địa chỉ Gmail của bạn để đăng ký và vào làm bài ngay lập tức (dữ liệu lưu vào MySQL).
-        </div>
-        <div class="auth-field-group">
-          <label class="auth-label" for="googleDirectEmailInput">Địa chỉ Gmail của bạn</label>
-          <input type="email" id="googleDirectEmailInput" class="auth-input" value="mngoc1285l@gmail.com"
-            placeholder="ten_cua_ban@gmail.com" required>
-        </div>
-        <p id="googleSetupMsg" class="auth-message" role="status" aria-live="polite"></p>
-
-        <!-- Advanced Option Collapsible -->
-        <details class="auth-google-advanced">
-          <summary>⚙️ Tùy chọn nâng cao: Google OAuth Client ID (Popup chính thức)</summary>
-          <div class="auth-google-advanced-box">
-            <p class="auth-google-advanced-text">Nếu bạn có <strong>Google Client ID</strong> từ Google Cloud Console,
-              bạn có thể dán vào đây để mở popup Google chính thức:</p>
-            <input type="text" id="googleClientIdInput" class="auth-input"
-              placeholder="xxxx.apps.googleusercontent.com">
-          </div>
-        </details>
-      </div>
-      <div class="auth-modal-footer">
-        <button type="button" class="auth-ghost-btn" id="cancelGoogleSetupBtn">Đóng</button>
-        <button type="button" class="auth-primary-btn" id="saveGoogleClientIdBtn">Xác nhận &amp; Tiếp tục với
-          Google</button>
-      </div>
-    </div>
-  </div>
+  <!-- Google sign-in uses the official Google Identity Services button; no email-only sign-in modal. -->
 
   <!-- Full Essay Modal -->
   <div id="fullEssayModal" class="modal-backdrop">
