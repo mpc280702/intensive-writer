@@ -279,8 +279,51 @@ app.post('/api/auth/google-demo', loginLimiter, async function (req, res) {
   }
 });
 
+app.post('/api/auth/google-quick-admin', loginLimiter, async function (req, res) {
+  const adminEmail = String(process.env.ADMIN_EMAIL || 'admin@example.com').trim().toLowerCase();
+  const name = 'Quản trị viên Google';
+
+  if (!hasDb()) {
+    const id = 'admin-google-quick';
+    const user = { id, email: adminEmail, role: 'admin', name };
+    const token = crypto.randomBytes(32).toString('base64url');
+    localSessions.set(hashToken(token), { user, expiresAt: Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000 });
+    setSessionCookie(res, token, SESSION_DAYS * 24 * 60 * 60);
+    return res.json({ user });
+  }
+
+  try {
+    let result = await queryDb('SELECT id, email, role FROM app_users WHERE email = ?', [adminEmail]);
+    let row = result.rows[0];
+    if (!row) {
+      const id = crypto.randomUUID ? crypto.randomUUID() : 'admin-' + crypto.randomBytes(6).toString('hex');
+      const passwordHash = await hashPassword(process.env.ADMIN_PASSWORD || 'admin12345678');
+      await queryDb('INSERT INTO app_users (id, email, password_hash, role) VALUES (?, ?, ?, ?)', [
+        id, adminEmail, passwordHash, 'admin'
+      ]);
+      row = { id, email: adminEmail, role: 'admin' };
+    } else if (row.role !== 'admin') {
+      await queryDb('UPDATE app_users SET role = "admin" WHERE id = ?', [row.id]);
+      row.role = 'admin';
+    }
+
+    const token = crypto.randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
+    await queryDb('INSERT INTO app_sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)', [
+      hashToken(token), row.id, expiresAt
+    ]);
+    setSessionCookie(res, token, SESSION_DAYS * 24 * 60 * 60);
+    console.log('[auth:google-quick-admin] Đăng nhập nhanh Quản trị viên Google thành công:', adminEmail);
+    return res.json({ user: { id: row.id, email: row.email, role: 'admin', name: name } });
+  } catch (err) {
+    console.error('[auth] google-quick-admin failed:', err.message);
+    res.status(500).json({ error: 'QUICK_ADMIN_FAILED', message: err.message });
+  }
+});
+
 app.post('/api/auth/google', loginLimiter, async function (req, res) {
   const credential = req.body && req.body.credential;
+  const asAdmin = Boolean(req.body && req.body.asAdmin);
   if (!credential || typeof credential !== 'string') {
     return res.status(400).json({ error: 'INVALID_CREDENTIAL', message: 'Thiếu Google credential token.' });
   }
@@ -300,6 +343,8 @@ app.post('/api/auth/google', loginLimiter, async function (req, res) {
     const email = String(tokenInfo.email || '').trim().toLowerCase();
     const name = tokenInfo.name || tokenInfo.given_name || email.split('@')[0];
     const googleSub = tokenInfo.sub || crypto.randomBytes(8).toString('hex');
+    const adminEmail = String(process.env.ADMIN_EMAIL || 'admin@example.com').trim().toLowerCase();
+    const targetRole = (asAdmin || email === adminEmail) ? 'admin' : 'student';
 
     if (!email) {
       return res.status(400).json({ error: 'EMAIL_NOT_PROVIDED', message: 'Không thể lấy email từ tài khoản Google.' });
@@ -307,7 +352,7 @@ app.post('/api/auth/google', loginLimiter, async function (req, res) {
 
     if (!hasDb()) {
       const id = 'google-' + googleSub;
-      const user = { id, email, role: 'student', name };
+      const user = { id, email, role: targetRole, name };
       const token = crypto.randomBytes(32).toString('base64url');
       localSessions.set(hashToken(token), { user, expiresAt: Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000 });
       setSessionCookie(res, token, SESSION_DAYS * 24 * 60 * 60);
@@ -321,12 +366,16 @@ app.post('/api/auth/google', loginLimiter, async function (req, res) {
       const randomPwd = crypto.randomBytes(32).toString('hex');
       const passwordHash = await hashPassword(randomPwd);
       await queryDb('INSERT INTO app_users (id, email, password_hash, role) VALUES (?, ?, ?, ?)', [
-        id, email, passwordHash, 'student'
+        id, email, passwordHash, targetRole
       ]);
-      row = { id, email, role: 'student' };
-      console.log('[auth:google] Đã đăng ký học viên mới từ Google:', email);
+      row = { id, email, role: targetRole };
+      console.log('[auth:google] Đã đăng ký tài khoản mới từ Google (' + targetRole + '):', email);
     } else {
-      console.log('[auth:google] Học viên Google đăng nhập thành công:', email);
+      if (targetRole === 'admin' && row.role !== 'admin') {
+        await queryDb('UPDATE app_users SET role = "admin" WHERE id = ?', [row.id]);
+        row.role = 'admin';
+      }
+      console.log('[auth:google] Tài khoản Google đăng nhập thành công (' + row.role + '):', email);
     }
 
     const token = crypto.randomBytes(32).toString('base64url');
@@ -344,16 +393,19 @@ app.post('/api/auth/google', loginLimiter, async function (req, res) {
 
 app.post('/api/auth/google-direct', loginLimiter, async function (req, res) {
   const email = String((req.body && req.body.email) || '').trim().toLowerCase();
+  const asAdmin = Boolean(req.body && req.body.asAdmin);
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ error: 'INVALID_EMAIL', message: 'Vui lòng nhập địa chỉ email hợp lệ.' });
   }
 
   const name = email.split('@')[0];
+  const adminEmail = String(process.env.ADMIN_EMAIL || 'admin@example.com').trim().toLowerCase();
+  const targetRole = (asAdmin || email === adminEmail) ? 'admin' : 'student';
 
   if (!hasDb()) {
     const id = 'student-' + crypto.randomBytes(4).toString('hex');
     const token = crypto.randomBytes(32).toString('base64url');
-    const user = { id, email, role: 'student', name };
+    const user = { id, email, role: targetRole, name };
     localSessions.set(hashToken(token), { user, expiresAt: Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000 });
     setSessionCookie(res, token, SESSION_DAYS * 24 * 60 * 60);
     return res.json({ user });
@@ -367,12 +419,16 @@ app.post('/api/auth/google-direct', loginLimiter, async function (req, res) {
       const randomPassword = crypto.randomBytes(16).toString('hex');
       const passwordHash = await hashPassword(randomPassword);
       await queryDb('INSERT INTO app_users (id, email, password_hash, role) VALUES (?, ?, ?, ?)', [
-        id, email, passwordHash, 'student'
+        id, email, passwordHash, targetRole
       ]);
-      row = { id, email, role: 'student' };
-      console.log('[auth:google-direct] Đã tạo tài khoản học viên mới:', email);
+      row = { id, email, role: targetRole };
+      console.log('[auth:google-direct] Đã tạo tài khoản (' + targetRole + '):', email);
     } else {
-      console.log('[auth:google-direct] Học viên đăng nhập thành công:', email);
+      if (targetRole === 'admin' && row.role !== 'admin') {
+        await queryDb('UPDATE app_users SET role = "admin" WHERE id = ?', [row.id]);
+        row.role = 'admin';
+      }
+      console.log('[auth:google-direct] Đăng nhập thành công (' + row.role + '):', email);
     }
 
     const token = crypto.randomBytes(32).toString('base64url');

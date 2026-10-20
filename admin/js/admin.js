@@ -108,6 +108,33 @@ async function initAuth() {
     }
   });
 
+  const adminGoogleQuickBtn = document.getElementById('adminGoogleQuickBtn');
+  if (adminGoogleQuickBtn) {
+    adminGoogleQuickBtn.addEventListener('click', async function () {
+      if (!window.IWApi || !window.IWApi.isConfigured()) {
+        setMessage('API backend chưa được cấu hình.', true);
+        return;
+      }
+      adminGoogleQuickBtn.disabled = true;
+      setMessage('Đang đăng nhập bằng Google…', false);
+      try {
+        const result = await window.IWApi.request('/api/auth/google-quick-admin', {
+          method: 'POST'
+        });
+        if (result.user && result.user.role === 'admin') {
+          showToast('✅ Đăng nhập Quản trị viên Google thành công!');
+          await enterAdmin(result.user);
+        } else {
+          setMessage('Không thể xác thực quyền quản trị.', true);
+        }
+      } catch (err) {
+        setMessage('Lỗi đăng nhập Google: ' + (err.message || 'Lỗi server'), true);
+      } finally {
+        adminGoogleQuickBtn.disabled = false;
+      }
+    });
+  }
+
   logoutBtn.addEventListener('click', async function () {
     logoutBtn.disabled = true;
     if (window.IWApi && window.IWApi.isConfigured()) {
