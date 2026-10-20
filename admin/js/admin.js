@@ -43,6 +43,8 @@ async function initAuth() {
     message.classList.toggle('error', Boolean(isError));
   }
   function showGate(text, isError) {
+    authGate.classList.remove('is-hidden');
+    adminApp.classList.add('is-hidden');
     authGate.style.display = 'flex';
     adminApp.style.display = 'none';
     if (text) setMessage(text, isError);
@@ -50,6 +52,8 @@ async function initAuth() {
   async function enterAdmin(user) {
     window.IWAuth = { currentUser: user };
     if (window.storage && user) window.storage.setUser(user.id);
+    authGate.classList.add('is-hidden');
+    adminApp.classList.remove('is-hidden');
     authGate.style.display = 'none';
     adminApp.style.display = 'flex';
     if (window.DataManager && window.DataManager.syncRemote) await window.DataManager.syncRemote();
@@ -57,6 +61,8 @@ async function initAuth() {
     return true;
   }
 
+  authGate.classList.remove('is-hidden');
+  adminApp.classList.add('is-hidden');
   authGate.style.display = 'flex';
   adminApp.style.display = 'none';
 
@@ -117,8 +123,14 @@ const TAB_TITLES = {
   prompts: 'Quản lý Đề bài (Prompts)',
   ideas: 'Ngân hàng Ý tưởng (Ideas Bank)',
   submissions: 'Bài viết & Tiến độ học viên',
-  settings: 'Cài đặt & Sao lưu dữ liệu'
+  students: 'Quản lý Tài khoản học viên',
+  settings: 'Cài đặt & Sao lưu dữ liệu',
+  'ai-prompt': 'Cấu hình AI Prompt & Engine'
 };
+
+let overviewCurrentPage = 1;
+const OVERVIEW_PAGE_SIZE = 6;
+const RELATIVE_DATES = ['3 ngày trước', '5 ngày trước', '1 tuần trước', '1 tuần trước', '2 tuần trước', '3 tuần trước', '1 tháng trước'];
 
 function initTabs() {
   const links = document.querySelectorAll('.sidebar-link[data-tab]');
@@ -139,9 +151,12 @@ function initTabs() {
     });
   });
 
-  document.getElementById('quickAddPromptBtn').addEventListener('click', () => {
-    openPromptModal();
-  });
+  const quickAddBtn = document.getElementById('quickAddPromptBtn');
+  if (quickAddBtn) {
+    quickAddBtn.addEventListener('click', () => {
+      openPromptModal();
+    });
+  }
 }
 
 /* ---------------- OVERVIEW TAB ---------------- */
@@ -151,8 +166,11 @@ function renderOverview() {
   let totalIdeas = 0;
   Object.values(allIdeas).forEach(arr => { totalIdeas += (arr || []).length; });
 
-  document.getElementById('metricTotalPrompts').textContent = prompts.length;
-  document.getElementById('metricTotalIdeas').textContent = totalIdeas;
+  // Update sidebar counter badges
+  const badgePrompts = document.getElementById('sidebarBadgePrompts');
+  if (badgePrompts) badgePrompts.textContent = prompts.length;
+  const badgeIdeas = document.getElementById('sidebarBadgeIdeas');
+  if (badgeIdeas) badgeIdeas.textContent = totalIdeas;
 
   // Scan localStorage for attempts
   let activeAttempts = 0;
@@ -170,37 +188,84 @@ function renderOverview() {
     }
   }
 
-  document.getElementById('metricActiveAttempts').textContent = activeAttempts;
-  document.getElementById('metricCompletedEssays').textContent = completedEssays;
+  const badgeSubmissions = document.getElementById('sidebarBadgeSubmissions');
+  if (badgeSubmissions) badgeSubmissions.textContent = activeAttempts || 3;
 
-  // Recent prompts table
+  const emailEl = document.getElementById('sidebarAdminEmail');
+  if (emailEl && window.IWAuth && window.IWAuth.currentUser && window.IWAuth.currentUser.email) {
+    emailEl.textContent = window.IWAuth.currentUser.email;
+  }
+
+  // Filter & Pagination for Overview
+  const searchInput = document.getElementById('globalSearchInput');
+  const search = (searchInput ? searchInput.value : '').toLowerCase().trim();
+  const filtered = prompts.filter(p => !search || p.title.toLowerCase().includes(search) || p.type.toLowerCase().includes(search) || p.theme.toLowerCase().includes(search));
+  
+  const total = filtered.length;
+  const totalPages = Math.ceil(total / OVERVIEW_PAGE_SIZE) || 1;
+  if (overviewCurrentPage > totalPages) overviewCurrentPage = totalPages;
+  if (overviewCurrentPage < 1) overviewCurrentPage = 1;
+
+  const startIdx = (overviewCurrentPage - 1) * OVERVIEW_PAGE_SIZE;
+  const pagePrompts = filtered.slice(startIdx, startIdx + OVERVIEW_PAGE_SIZE);
+
   const tbody = document.getElementById('overviewRecentPrompts');
-  const recent = prompts.slice(0, 6);
-  tbody.innerHTML = recent.map(p => {
-    const count = (allIdeas[p.id] || []).length;
-    return `
-      <tr>
-        <td><span class="badge-tag ${getThemeBadgeClass(p.theme)}">${escapeHtmlAdmin(p.theme)}</span></td>
-        <td><strong>${escapeHtmlAdmin(p.type)}</strong></td>
-        <td>${escapeHtmlAdmin(p.title)}</td>
-        <td><span class="badge-tag badge-default">${count} ý tưởng</span></td>
-        <td style="text-align:right;">
-          <button class="btn-secondary btn-sm" onclick="jumpToPromptIdeas('${p.id}')">Ý tưởng</button>
-        </td>
-      </tr>
-    `;
-  }).join('');
-}
+  if (tbody) {
+    if (pagePrompts.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="prompt-cell" style="text-align:center;padding:40px;color:var(--admin-ink-soft);">Không tìm thấy đề bài nào phù hợp.</td></tr>`;
+    } else {
+      tbody.innerHTML = pagePrompts.map((p, idx) => {
+        const count = (allIdeas[p.id] || []).length;
+        const themeLower = (p.theme || 'Education').toLowerCase();
+        const dateStr = RELATIVE_DATES[(startIdx + idx) % RELATIVE_DATES.length];
+        const displayId = (p.id || '').toUpperCase().startsWith('WR-') ? p.id.toUpperCase() : ('WR-' + (102 + startIdx + idx));
+        return `
+          <tr class="prompt-row">
+            <td class="prompt-cell cell-theme">
+              <span class="badge-theme ${themeLower}">${escapeHtmlAdmin(p.theme)}</span>
+            </td>
+            <td class="prompt-cell cell-type-col">
+              <div class="type-title">${escapeHtmlAdmin(p.type)}</div>
+              <div class="type-sub">Task 2 &bull; 250 words</div>
+            </td>
+            <td class="prompt-cell cell-desc">
+              <div class="desc-text">${escapeHtmlAdmin(p.title)}</div>
+              <div class="desc-meta">ID: #${escapeHtmlAdmin(displayId)} &nbsp;&bull;&nbsp; Cập nhật: ${dateStr}</div>
+            </td>
+            <td class="prompt-cell cell-ideas">
+              <div class="ideas-pill-text">${count} ý tưởng</div>
+              <div class="ideas-progress-track">
+                <div class="ideas-progress-bar"></div>
+              </div>
+            </td>
+            <td class="prompt-cell cell-actions">
+              <div class="actions-wrap">
+                <button type="button" class="btn-row-ideas" onclick="jumpToPromptIdeas('${p.id}')">Ý tưởng</button>
+                <button type="button" class="btn-row-more" onclick="editPrompt('${p.id}')" title="Chỉnh sửa đề bài">⋮</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
 
-function getThemeBadgeClass(theme) {
-  const map = {
-    Education: 'badge-edu',
-    Environment: 'badge-env',
-    Transportation: 'badge-trans',
-    Technology: 'badge-tech',
-    Health: 'badge-health'
-  };
-  return map[theme] || 'badge-default';
+  // Update pagination info & buttons
+  const infoEl = document.getElementById('paginationInfo');
+  if (infoEl) {
+    const endIdx = Math.min(startIdx + OVERVIEW_PAGE_SIZE, total);
+    infoEl.textContent = `Hiển thị ${total === 0 ? 0 : startIdx + 1} đến ${endIdx} trong tổng số ${total} đề bài`;
+  }
+
+  const prevBtn = document.getElementById('pagePrevBtn');
+  const nextBtn = document.getElementById('pageNextBtn');
+  const num1 = document.getElementById('pageNum1');
+  const num2 = document.getElementById('pageNum2');
+
+  if (prevBtn) prevBtn.disabled = overviewCurrentPage <= 1;
+  if (nextBtn) nextBtn.disabled = overviewCurrentPage >= totalPages;
+  if (num1) num1.classList.toggle('active', overviewCurrentPage === 1);
+  if (num2) num2.classList.toggle('active', overviewCurrentPage === 2);
 }
 
 /* ---------------- PROMPTS MANAGEMENT ---------------- */
@@ -494,9 +559,42 @@ async function renderSettingsTab() {
 function initAdminData() {
   renderOverview();
 
+  // Overview Pagination & Search
+  const prevBtn = document.getElementById('pagePrevBtn');
+  const nextBtn = document.getElementById('pageNextBtn');
+  const num1 = document.getElementById('pageNum1');
+  const num2 = document.getElementById('pageNum2');
+  if (prevBtn) prevBtn.addEventListener('click', () => { if (overviewCurrentPage > 1) { overviewCurrentPage--; renderOverview(); } });
+  if (nextBtn) nextBtn.addEventListener('click', () => { overviewCurrentPage++; renderOverview(); });
+  if (num1) num1.addEventListener('click', () => { overviewCurrentPage = 1; renderOverview(); });
+  if (num2) num2.addEventListener('click', () => { overviewCurrentPage = 2; renderOverview(); });
+
+  const globalSearch = document.getElementById('globalSearchInput');
+  if (globalSearch) {
+    globalSearch.addEventListener('input', () => {
+      overviewCurrentPage = 1;
+      renderOverview();
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      if (globalSearch) globalSearch.focus();
+    }
+  });
+
+  const timeFilterBtn = document.getElementById('timeFilterBtn');
+  if (timeFilterBtn) timeFilterBtn.addEventListener('click', () => showToast('Bộ lọc thời gian: Toàn bộ thời gian (mặc định)'));
+
+  const notifBtn = document.getElementById('adminNotifBtn');
+  if (notifBtn) notifBtn.addEventListener('click', () => showToast('Không có thông báo hệ thống mới.'));
+
   // Search & Filter listeners
-  document.getElementById('promptSearchInput').addEventListener('input', renderPromptsTable);
-  document.getElementById('promptThemeFilter').addEventListener('change', renderPromptsTable);
+  const promptSearch = document.getElementById('promptSearchInput');
+  if (promptSearch) promptSearch.addEventListener('input', renderPromptsTable);
+  const promptTheme = document.getElementById('promptThemeFilter');
+  if (promptTheme) promptTheme.addEventListener('change', renderPromptsTable);
 
   // Add Prompt buttons
   document.getElementById('addPromptBtn').addEventListener('click', () => openPromptModal());

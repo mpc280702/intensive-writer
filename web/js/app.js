@@ -165,16 +165,7 @@ function switchTab(tab) {
 
 function updateAIStatusBadge() {
   const badge = document.getElementById('aiStatusBadge');
-  if (!badge) return;
-  if (AIService.isConfigured()) {
-    badge.className = 'ai-status-badge active';
-    badge.innerHTML = '<span class="indicator-dot"></span>AI Server';
-    badge.title = 'AI được gọi qua backend; API key không nằm trong trình duyệt';
-  } else {
-    badge.className = 'ai-status-badge';
-    badge.innerHTML = '<span class="indicator-dot"></span>Demo / Offline AI';
-    badge.title = 'Đang dùng bộ máy demo cục bộ; đăng nhập và cấu hình API để đồng bộ/AI server';
-  }
+  if (badge) badge.remove();
 }
 
 /* ---------------- RENDER: PRACTICE ---------------- */

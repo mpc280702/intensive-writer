@@ -1,2 +1,2 @@
 /* On GitHub Pages, set apiBaseUrl to your deployed API URL. Example: https://your-api-service.onrender.com. Leave blank for local/server same-origin mode. Never put keys here. Set allowStudentSignup true only when ALLOW_STUDENT_SIGNUP=true on the API server. */
-window.IW_CONFIG = window.IW_CONFIG || { apiBaseUrl: '', allowStudentSignup: false };
+window.IW_CONFIG = window.IW_CONFIG || { apiBaseUrl: '', allowStudentSignup: true, googleClientId: '' };

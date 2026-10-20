@@ -1,15 +1,21 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Intensive Writer — Nền tảng luyện viết IELTS Task 2 toàn diện</title>
-  <meta name="description" content="Luyện viết IELTS Writing Task 2 theo phương pháp Scaffold: khám phá ý tưởng, kiến tạo dàn ý, viết từng đoạn và nhận phản hồi chi tiết từ AI.">
+  <meta name="description"
+    content="Luyện viết IELTS Writing Task 2 theo phương pháp Scaffold: khám phá ý tưởng, kiến tạo dàn ý, viết từng đoạn và nhận phản hồi chi tiết từ AI.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito+Sans:wght@400;600;700;800&display=swap&subset=vietnamese,latin-ext" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito+Sans:wght@400;600;700;800&display=swap&subset=vietnamese,latin-ext"
+    rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
+
 <body>
   <div id="app">
     <!-- Topbar -->
@@ -20,69 +26,388 @@
       </div>
 
       <div class="topbar-right">
-        <span id="aiStatusBadge" class="ai-status-badge">
-          <span class="indicator-dot"></span>Demo / Offline AI
-        </span>
-        <button id="accountBtn" class="icon-btn" title="Đăng nhập để đồng bộ tiến độ">
+        <nav class="tabs">
+          <button type="button" class="tab-btn active" data-tab="practice">Luyện viết</button>
+          <button type="button" class="tab-btn" data-tab="dashboard">Bảng điều khiển</button>
+        </nav>
+
+        <!-- Notification Dropdown Container -->
+        <div class="notif-wrapper" id="notifWrapper">
+          <button id="notificationBtn" class="notif-btn" type="button" title="Thông báo" aria-label="Xem thông báo"
+            aria-expanded="false">
+            <svg class="notif-bell-icon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span class="notif-badge" id="notifBadge">0</span>
+          </button>
+
+          <!-- Notification Dropdown Menu -->
+          <div class="notif-dropdown" id="notifDropdown">
+            <div class="notif-header">
+              <div class="notif-header-info">
+                <span class="notif-title">Thông báo</span>
+                <span class="notif-counter" id="notifUnreadBadge">0 mới</span>
+              </div>
+              <button type="button" class="notif-action-btn" id="notifMarkAllReadBtn">Đánh dấu đã đọc</button>
+            </div>
+
+            <div class="notif-filter-tabs">
+              <button type="button" class="notif-tab active" data-filter="all">Tất cả</button>
+              <button type="button" class="notif-tab" data-filter="unread">Chưa đọc</button>
+            </div>
+
+            <div class="notif-body" id="notifList">
+              <!-- Rendered via JS -->
+            </div>
+
+            <div class="notif-footer">
+              <span>🌻 Luyện viết đều đặn để đạt kết quả tốt nhất</span>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" id="accountBtn" class="icon-btn account-btn" title="Đăng nhập để đồng bộ tiến độ">
           👤 <span id="accountBtnLabel">Đăng nhập</span>
         </button>
-        <a href="../admin/" class="icon-btn" title="Trang quản trị viên" style="text-decoration:none;">
-          🔐 <span>Quản trị</span>
-        </a>
-        <nav class="tabs">
-          <button class="tab-btn active" data-tab="practice">Luyện viết</button>
-          <button class="tab-btn" data-tab="dashboard">Bảng điều khiển</button>
-        </nav>
       </div>
     </header>
 
     <!-- Main Views -->
-    <main id="view-practice" class="view active"></main>
-    <main id="view-dashboard" class="view"></main>
+    <main id="app-main">
+      <section id="view-practice" class="view active" aria-label="Luyện viết"></section>
+      <section id="view-dashboard" class="view" aria-label="Bảng điều khiển"></section>
+    </main>
   </div>
 
-  <!-- Account Modal: authentication is handled by the API server -->
+  <!-- Account Modal: modern student account login, registration & recovery -->
   <div id="accountModal" class="modal-backdrop">
-    <div class="modal-box">
-      <div class="modal-head">
-        <h3>👤 Tài khoản học viên</h3>
-        <button class="drawer-close" type="button" data-auth-close aria-label="Đóng">✕</button>
-      </div>
-      <form id="accountLoginForm">
-        <div class="modal-body">
-          <p style="margin-top:0;font-size:0.92rem;color:var(--ink-soft);line-height:1.6;">Đăng nhập để đồng bộ bài viết, lựa chọn và feedback giữa các thiết bị. Khi chưa kết nối API, bạn vẫn có thể dùng chế độ demo lưu trên trình duyệt này.</p>
-          <label style="font-weight:600;font-size:0.9rem;display:block;margin-top:14px;">Email
-            <input type="email" id="accountEmail" class="input-field" placeholder="you@example.com" autocomplete="username" required>
-          </label>
-          <label style="font-weight:600;font-size:0.9rem;display:block;margin-top:14px;">Mật khẩu
-            <input type="password" id="accountPassword" class="input-field" placeholder="Tối thiểu 10 ký tự" autocomplete="current-password" minlength="10" required>
-          </label>
-          <p id="authMessage" class="auth-message" role="status" aria-live="polite"></p>
+    <div class="modal-box auth-modal-box mode-login" id="authModalBox">
+      <!-- Modal Header -->
+      <div class="auth-modal-header">
+        <div class="auth-title-group">
+          <div class="auth-avatar-icon" id="authAvatarIcon">
+            <svg class="auth-avatar-user" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+            </svg>
+            <svg class="auth-avatar-lock auth-forgot-only" width="22" height="22" viewBox="0 0 24 24" fill="none"
+              stroke="#7C3AED" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="auth-modal-title" id="authModalTitle">Tài khoản học viên</h3>
+            <p class="auth-modal-subtitle" id="authModalSubtitle">Hệ thống đồng bộ dữ liệu bài viết &amp; nhận xét</p>
+          </div>
         </div>
-        <div class="modal-foot">
-          <button type="button" class="ghost-btn" data-auth-close>Đóng</button>
-          <button type="button" id="logoutAccountBtn" class="ghost-btn" hidden>Đăng xuất</button>
-          <button type="button" id="registerAccountBtn" class="ghost-btn" hidden>Đăng ký</button>
-          <button type="submit" class="primary-btn">Đăng nhập</button>
+        <button class="auth-close-btn" type="button" data-auth-close aria-label="Đóng">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Notice Banner (Forgot Password only) -->
+      <div class="auth-notice-banner auth-forgot-only" id="authForgotNotice">
+        Hệ thống sẽ gửi mã xác thực <strong>6 chữ số (OTP)</strong> đến phương thức liên hệ bạn đã kích hoạt để đảm bảo
+        an toàn cho toàn bộ bài viết và nhận xét khóa học.
+      </div>
+
+      <!-- Logged-in Profile View (Shown when user is authenticated) -->
+      <div id="authProfileView" class="auth-profile-box" hidden>
+        <div class="auth-profile-card">
+          <div class="auth-profile-avatar-large">👤</div>
+          <div class="auth-profile-details">
+            <div class="auth-profile-email" id="profileCardEmail">user@example.com</div>
+            <div class="auth-profile-tag">Học viên Intensive Writer</div>
+          </div>
+        </div>
+        <div class="auth-profile-sync-note">
+          <span>✅ Dữ liệu làm bài và nhận xét AI được đồng bộ trực tiếp vào CSDL MySQL XAMPP.</span>
+        </div>
+        <div class="auth-profile-buttons">
+          <button type="button" class="auth-logout-big-btn" id="profileLogoutBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            <span>Đăng xuất tài khoản này</span>
+          </button>
+          <button type="button" class="auth-ghost-btn" id="profileSwitchBtn">Đổi / Đăng nhập tài khoản khác</button>
+        </div>
+      </div>
+
+      <!-- Segmented Tab Switcher (Login / Register) -->
+      <div class="auth-segmented-tabs auth-login-reg-tabs" id="authSegmentedTabs">
+        <button type="button" class="auth-segment-btn active" id="authTabLogin">Đăng nhập</button>
+        <button type="button" class="auth-segment-btn" id="authTabRegister">Đăng ký mới</button>
+      </div>
+
+      <!-- Auth Form -->
+      <form id="accountLoginForm">
+        <div class="auth-form-body">
+          <!-- Recovery Method Selector (Forgot only) -->
+          <div class="auth-field-group auth-forgot-only">
+            <label class="auth-label">Phương thức nhận mã</label>
+            <div class="auth-segmented-tabs auth-method-tabs auth-method-tabs-custom">
+              <button type="button" class="auth-segment-btn active" id="authMethodEmail">
+                <svg class="auth-method-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#4F46E5"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                  <polyline points="22,6 12,13 2,6" />
+                </svg>
+                <span>Email đăng ký</span>
+              </button>
+              <button type="button" class="auth-segment-btn" id="authMethodPhone">
+                <svg class="auth-method-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                  <line x1="12" y1="18" x2="12.01" y2="18" />
+                </svg>
+                <span>Số điện thoại / SMS</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Full Name Field (Register only) -->
+          <div class="auth-field-group auth-register-only">
+            <label class="auth-label" for="accountFullName">Họ và tên</label>
+            <div class="auth-input-wrapper">
+              <input type="text" id="accountFullName" class="auth-input" placeholder="Nguyễn Văn A" autocomplete="name">
+              <span class="auth-input-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" color="#94A3B8">
+                  <path
+                    d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+                </svg>
+              </span>
+            </div>
+          </div>
+
+          <!-- Email Field -->
+          <div class="auth-field-group">
+            <label class="auth-label" for="accountEmail">
+              <span class="auth-login-only">Email</span>
+              <span class="auth-register-only">Email học viên</span>
+              <span class="auth-forgot-only">Email học viên</span>
+            </label>
+            <div class="auth-input-wrapper">
+              <input type="email" id="accountEmail" class="auth-input" value="student@example.com"
+                placeholder="hocvien@example.com" autocomplete="username" required>
+              <span class="auth-input-icon valid-icon" id="emailStatusIcon" title="Định dạng email">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" fill="#2563EB" />
+                  <path d="M8.5 12.5l2.5 2.5 5-5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                </svg>
+              </span>
+            </div>
+          </div>
+
+          <!-- Password Field (Login & Register only) -->
+          <div class="auth-field-group auth-pwd-group">
+            <div class="auth-label-row">
+              <label class="auth-label" for="accountPassword">Mật khẩu</label>
+              <a href="#" class="auth-forgot-link auth-login-only" id="authForgotPwdBtn">Quên mật khẩu?</a>
+            </div>
+            <div class="auth-input-wrapper">
+              <input type="password" id="accountPassword" class="auth-input pwd-input" value="student12345678"
+                placeholder="Tối thiểu 10 ký tự" autocomplete="current-password" minlength="10">
+              <button type="button" class="auth-input-icon toggle-pwd" id="togglePasswordBtn"
+                aria-label="Hiện/ẩn mật khẩu">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- Password Strength Bar (Register only) -->
+            <div class="auth-strength-container auth-register-only">
+              <div class="auth-strength-label-row">
+                <span>Độ mạnh mật khẩu:</span>
+                <span id="pwdStrengthText" class="strength-val strong">Mạnh</span>
+              </div>
+              <div class="auth-strength-bars">
+                <div class="strength-bar-seg active strong" id="strengthBar1"></div>
+                <div class="strength-bar-seg active strong" id="strengthBar2"></div>
+                <div class="strength-bar-seg active strong" id="strengthBar3"></div>
+              </div>
+            </div>
+
+            <!-- Caption row (Login only) -->
+            <div class="auth-caption-row auth-login-only">
+              <span class="auth-info-caption">
+                <span class="info-icon">ⓘ</span> <span id="authMessage">Đăng nhập để đồng bộ tiến độ giữa các thiết
+                  bị.</span>
+              </span>
+              <span class="auth-char-count" id="pwdCharCount">0/10+</span>
+            </div>
+          </div>
+
+          <!-- Confirm Password Field (Register only) -->
+          <div class="auth-field-group auth-register-only">
+            <label class="auth-label" for="accountPasswordConfirm">Xác nhận mật khẩu</label>
+            <div class="auth-input-wrapper">
+              <input type="password" id="accountPasswordConfirm" class="auth-input" placeholder="••••••••••••••••"
+                autocomplete="new-password">
+              <button type="button" class="auth-input-icon toggle-pwd" id="toggleConfirmPasswordBtn"
+                aria-label="Hiện/ẩn mật khẩu">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- OTP Card (Forgot only) -->
+          <div class="auth-otp-card auth-forgot-only">
+            <div class="auth-otp-head">
+              <div class="auth-otp-title-group">
+                <span class="auth-otp-title">Mã xác thực OTP (6 số)</span>
+                <span class="auth-otp-badge">Đã gửi mã</span>
+              </div>
+              <span class="auth-otp-countdown" id="otpCountdown">Gửi lại sau <strong>58s</strong></span>
+            </div>
+            <div class="auth-otp-input-wrapper">
+              <input type="text" id="authOtpInput" class="auth-otp-input" placeholder="Nhập 6 số được gửi về email"
+                maxlength="6" inputmode="numeric">
+              <button type="button" class="auth-otp-paste-btn" id="authOtpPasteBtn">Dán mã</button>
+            </div>
+            <p class="auth-otp-hint">Chưa nhận được? Kiểm tra thư mục Quảng cáo/Spam hoặc bấm gửi lại.</p>
+          </div>
+
+          <!-- Remember me (Login only) -->
+          <label class="auth-remember-row auth-login-only">
+            <input type="checkbox" id="authRememberMe" checked>
+            <span>Duy trì đăng nhập trên máy tính này</span>
+          </label>
+
+          <!-- Quick hint (Login only) -->
+          <div class="auth-demo-hint-badge auth-login-only">
+            💡 <strong>Đăng nhập nhanh:</strong> Bấm nút <strong>Google</strong> (1 chạm) hoặc dùng tài khoản học viên
+            mẫu: <code>student@example.com</code> / <code>student12345678</code>
+          </div>
+
+          <!-- Terms & Policy (Register only) -->
+          <label class="auth-remember-row auth-register-only">
+            <input type="checkbox" id="authAgreeTerms" checked>
+            <span>Tôi đồng ý với <a href="#" class="auth-legal-link">Điều khoản sử dụng</a> và <a href="#"
+                class="auth-legal-link">Chính sách bảo mật</a> của học viện</span>
+          </label>
+
+          <!-- Divider -->
+          <div class="auth-divider">
+            <span class="auth-login-reg-tabs">HOẶC TIẾP TỤC VỚI</span>
+            <span class="auth-forgot-only">HỖ TRỢ NHANH</span>
+          </div>
+
+          <!-- Quick Action: Google (Login & Register) -->
+          <div class="auth-quick-actions auth-login-reg-tabs">
+            <button type="button" class="auth-social-btn" id="authGoogleBtn">
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4"
+                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.14z" />
+                <path fill="#34A853"
+                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.24v3.15C3.26 21.36 7.33 24 12 24z" />
+                <path fill="#FBBC05"
+                  d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.24C.45 8.15 0 9.92 0 12s.45 3.85 1.24 5.42l4.04-3.15z" />
+                <path fill="#EA4335"
+                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.24 6.58l4.04 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
+              </svg>
+              <span id="googleBtnText">Google</span>
+            </button>
+          </div>
+
+          <!-- Quick Action: Support (Forgot only) -->
+          <div class="auth-quick-actions auth-support-grid auth-forgot-only">
+            <button type="button" class="auth-support-btn email-link" id="authSendRecoveryLinkBtn">
+              <span class="support-info-badge">!</span> <span>Gửi link khôi phục</span>
+            </button>
+            <button type="button" class="auth-support-btn live-chat" id="authLiveSupportBtn">
+              <span class="lightning-icon">⚡</span> <span>Hỗ trợ trực tuyến</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="auth-modal-footer">
+          <div class="auth-switch-text">
+            <span id="authSwitchPrompt">Chưa có tài khoản?</span>
+            <a href="#" id="authSwitchTabLink">Đăng ký ngay</a>
+          </div>
+          <div class="auth-footer-buttons">
+            <button type="button" class="auth-ghost-btn" id="authCancelBtn" data-auth-close>Đóng</button>
+            <button type="button" id="logoutAccountBtn" class="auth-danger-btn" hidden>Đăng xuất</button>
+            <button type="button" id="registerAccountBtn" hidden>Đăng ký</button>
+            <button type="submit" class="auth-primary-btn" id="authSubmitBtn">Đăng nhập</button>
+          </div>
         </div>
       </form>
     </div>
   </div>
 
+  <!-- Google OAuth & Direct Registration Modal -->
+  <div id="googleSetupModal" class="auth-modal-wrapper">
+    <div class="auth-modal-card">
+      <div class="auth-modal-head">
+        <div class="auth-title-group">
+          <h2 class="auth-main-title">Đăng ký bằng Google</h2>
+          <p class="auth-sub-title">Liên kết tài khoản Google để lưu trữ bài làm vào hệ thống</p>
+        </div>
+        <button type="button" class="auth-modal-close" id="closeGoogleSetupBtn">✕</button>
+      </div>
+      <div class="auth-modal-body">
+        <div class="auth-demo-hint-badge auth-google-hint">
+          🌻 Nhập địa chỉ Gmail của bạn để đăng ký và vào làm bài ngay lập tức (dữ liệu lưu vào MySQL).
+        </div>
+        <div class="auth-field-group">
+          <label class="auth-label" for="googleDirectEmailInput">Địa chỉ Gmail của bạn</label>
+          <input type="email" id="googleDirectEmailInput" class="auth-input" value="mngoc1285l@gmail.com"
+            placeholder="ten_cua_ban@gmail.com" required>
+        </div>
+        <p id="googleSetupMsg" class="auth-message" role="status" aria-live="polite"></p>
+
+        <!-- Advanced Option Collapsible -->
+        <details class="auth-google-advanced">
+          <summary>⚙️ Tùy chọn nâng cao: Google OAuth Client ID (Popup chính thức)</summary>
+          <div class="auth-google-advanced-box">
+            <p class="auth-google-advanced-text">Nếu bạn có <strong>Google Client ID</strong> từ Google Cloud Console,
+              bạn có thể dán vào đây để mở popup Google chính thức:</p>
+            <input type="text" id="googleClientIdInput" class="auth-input"
+              placeholder="xxxx.apps.googleusercontent.com">
+          </div>
+        </details>
+      </div>
+      <div class="auth-modal-footer">
+        <button type="button" class="auth-ghost-btn" id="cancelGoogleSetupBtn">Đóng</button>
+        <button type="button" class="auth-primary-btn" id="saveGoogleClientIdBtn">Xác nhận &amp; Tiếp tục với
+          Google</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Full Essay Modal -->
   <div id="fullEssayModal" class="modal-backdrop">
-    <div class="modal-box" style="width:min(680px, 100%);">
+    <div class="modal-box essay-modal-box">
       <div class="modal-head">
         <div>
-          <h3 style="margin:0;">Toàn bộ bài luận của bạn</h3>
-          <span id="fullEssayWordCount" style="font-size:0.85rem;color:var(--ink-soft);"></span>
+          <h3 class="essay-modal-title">Toàn bộ bài luận của bạn</h3>
+          <span id="fullEssayWordCount" class="essay-modal-count"></span>
         </div>
-        <button class="drawer-close modal-close">✕</button>
+        <button type="button" class="drawer-close modal-close">✕</button>
       </div>
       <div class="modal-body" id="fullEssayContent"></div>
       <div class="modal-foot">
-        <button class="ghost-btn" id="downloadEssayBtn">📥 Tải file .txt</button>
-        <button class="primary-btn" id="copyEssayBtn">📋 Sao chép toàn bộ</button>
+        <button type="button" class="ghost-btn" id="downloadEssayBtn">📥 Tải file .txt</button>
+        <button type="button" class="primary-btn" id="copyEssayBtn">📋 Sao chép toàn bộ</button>
       </div>
     </div>
   </div>
@@ -93,7 +418,9 @@
   <script src="../shared/js/storage.js"></script>
   <script src="../shared/js/data.js"></script>
   <script src="../shared/js/ai-service.js"></script>
+  <script src="js/notifications.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/app.js"></script>
 </body>
+
 </html>

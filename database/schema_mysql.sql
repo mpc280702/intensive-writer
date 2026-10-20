@@ -1,0 +1,36 @@
+-- Intensive Writer - MySQL Schema for XAMPP / MariaDB / phpMyAdmin
+CREATE DATABASE IF NOT EXISTS `intensive_writer` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `intensive_writer`;
+
+CREATE TABLE IF NOT EXISTS `app_users` (
+  `id` VARCHAR(64) NOT NULL PRIMARY KEY,
+  `email` VARCHAR(191) NOT NULL UNIQUE,
+  `password_hash` VARCHAR(255) NOT NULL,
+  `role` VARCHAR(32) NOT NULL DEFAULT 'student',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `app_sessions` (
+  `token_hash` VARCHAR(64) NOT NULL PRIMARY KEY,
+  `user_id` VARCHAR(64) NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX `app_sessions_expires_idx` (`expires_at`),
+  CONSTRAINT `fk_sessions_user` FOREIGN KEY (`user_id`) REFERENCES `app_users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `user_kv` (
+  `user_id` VARCHAR(64) NOT NULL,
+  `key` VARCHAR(191) NOT NULL,
+  `value` MEDIUMTEXT NOT NULL,
+  `version` BIGINT NOT NULL DEFAULT 1,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`user_id`, `key`),
+  CONSTRAINT `fk_userkv_user` FOREIGN KEY (`user_id`) REFERENCES `app_users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `app_kv` (
+  `key` VARCHAR(191) NOT NULL PRIMARY KEY,
+  `value` MEDIUMTEXT NOT NULL,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
