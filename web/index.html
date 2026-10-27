@@ -29,6 +29,9 @@
         <nav class="tabs">
           <button type="button" class="tab-btn active" data-tab="practice">Luyện viết</button>
           <button type="button" class="tab-btn" data-tab="dashboard">Bảng điều khiển</button>
+          <a href="../admin/index.html" class="tab-btn admin-topbar-link" id="topbarAdminLink"
+            style="display:none;text-decoration:none;align-items:center;gap:4px;color:#4F46E5;font-weight:700;">⚙️ Quản
+            trị</a>
         </nav>
 
         <!-- Notification Dropdown Container -->
@@ -68,8 +71,19 @@
           </div>
         </div>
 
-        <button type="button" id="accountBtn" class="icon-btn account-btn" title="Đăng nhập để đồng bộ tiến độ">
-          👤 <span id="accountBtnLabel">Đăng nhập</span>
+        <button type="button" id="accountBtn" class="account-btn" title="Đăng nhập để đồng bộ tiến độ">
+          <span class="account-btn-avatar" id="accountBtnAvatar">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </span>
+          <span id="accountBtnLabel" class="account-btn-name">Đăng nhập</span>
+          <svg class="account-btn-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
         </button>
       </div>
     </header>
@@ -124,12 +138,16 @@
           <div class="auth-profile-avatar-large">👤</div>
           <div class="auth-profile-details">
             <div class="auth-profile-email" id="profileCardEmail">user@example.com</div>
-            <div class="auth-profile-tag">Học viên Intensive Writer</div>
+            <div class="auth-profile-tag" id="profileCardTag">Học viên Intensive Writer</div>
           </div>
         </div>
         <div class="auth-profile-sync-note">
           <span>✅ Dữ liệu làm bài và nhận xét AI được đồng bộ trực tiếp vào CSDL MySQL XAMPP.</span>
         </div>
+        <a href="../admin/index.html" class="auth-admin-portal-link" id="profileAdminPortalBtn"
+          style="display:none;align-items:center;justify-content:center;gap:8px;padding:11px 16px;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#ffffff;border-radius:8px;text-decoration:none;font-weight:700;font-size:0.95rem;margin:10px 0;box-shadow:0 4px 12px rgba(79,70,229,0.25);transition:all 0.2s ease;">
+          <span>⚙️ Đến Bảng Điều Khiển Quản Trị (Admin) →</span>
+        </a>
         <div class="auth-profile-buttons">
           <button type="button" class="auth-logout-big-btn" id="profileLogoutBtn">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -141,6 +159,8 @@
             <span>Đăng xuất tài khoản này</span>
           </button>
           <button type="button" class="auth-ghost-btn" id="profileSwitchBtn">Đổi / Đăng nhập tài khoản khác</button>
+          <button type="button" class="auth-ghost-btn" data-auth-close
+            style="background:transparent;border:1px solid #E2E8F0;color:#64748B;">Đóng cửa sổ</button>
         </div>
       </div>
 
@@ -198,8 +218,8 @@
               <span class="auth-forgot-only">Email học viên</span>
             </label>
             <div class="auth-input-wrapper">
-              <input type="email" id="accountEmail" class="auth-input" 
-                placeholder="hocvien@example.com" autocomplete="username" required>
+              <input type="email" id="accountEmail" class="auth-input" placeholder="hocvien@example.com"
+                autocomplete="username" required>
               <span class="auth-input-icon valid-icon" id="emailStatusIcon" title="Định dạng email">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="10" fill="#2563EB" />
@@ -217,7 +237,7 @@
               <a href="#" class="auth-forgot-link auth-login-only" id="authForgotPwdBtn">Quên mật khẩu?</a>
             </div>
             <div class="auth-input-wrapper">
-              <input type="password" id="accountPassword" class="auth-input pwd-input" 
+              <input type="password" id="accountPassword" class="auth-input pwd-input"
                 placeholder="Nhập mật khẩu của bạn" autocomplete="current-password">
               <button type="button" class="auth-input-icon toggle-pwd" id="togglePasswordBtn"
                 aria-label="Hiện/ẩn mật khẩu">
@@ -291,8 +311,8 @@
           </label>
 
           <!-- Quick hint (Login only) -->
-          <div class="auth-demo-hint-badge auth-login-only">🔐 Đăng nhập an toàn: chọn nút Google chính thức để xác minh tài khoản. Không cần và không nên nhập Gmail để giả lập đăng nhập.</div>
-          </div>
+          <div class="auth-demo-hint-badge auth-login-only">🔐 Đăng nhập an toàn: chọn nút Google chính thức để xác minh
+            tài khoản. Không cần và không nên nhập Gmail để giả lập đăng nhập.</div>
 
           <!-- Terms & Policy (Register only) -->
           <label class="auth-remember-row auth-register-only">

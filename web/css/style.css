@@ -83,10 +83,68 @@ p { line-height: 1.6; }
 .icon-btn:hover { background: var(--paper-warm); transform: translateY(-1px); }
 
 .account-btn {
-  height: 42px;
-  padding: 0 18px;
-  font-size: 0.9rem;
+  height: 40px;
+  padding: 0 12px 0 6px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--font-ui);
+  font-size: 0.88rem;
+  font-weight: 600;
+  max-width: 190px;
+}
+.account-btn:hover {
+  background: var(--paper-warm);
+  border-color: #CBD5E1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+.account-btn-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #F1F5F9;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+.account-btn.is-logged-in .account-btn-avatar {
+  background: linear-gradient(135deg, #4F46E5, #7C3AED);
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+}
+.account-avatar-initial {
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.account-btn-name {
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.2;
+}
+.account-btn-chevron {
+  color: #94A3B8;
+  transition: transform 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+}
+.account-btn:hover .account-btn-chevron {
+  color: var(--ink);
+  transform: translateY(1px);
 }
 
 /* Notification Button & Dropdown */

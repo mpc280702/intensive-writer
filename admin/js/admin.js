@@ -73,11 +73,13 @@ async function initAuth() {
       const session = await window.IWApi.request('/api/auth/me');
       if (session.user && session.user.role === 'admin') {
         await enterAdmin(session.user);
+      } else if (session.user) {
+        showGate('Tài khoản ' + session.user.email + ' là tài khoản Học viên, không có quyền quản trị. Hãy đăng nhập tài khoản Admin (mngoc1285l@gmail.com).', true);
       } else {
-        showGate('Tài khoản hiện tại không có quyền quản trị. Hãy đăng nhập bằng tài khoản admin.', true);
+        showGate('Đăng nhập bằng tài khoản Quản trị viên để quản lý hệ thống.', false);
       }
     } catch (error) {
-      setMessage('Đăng nhập bằng tài khoản được cấu hình trên API server.', false);
+      showGate('Đăng nhập bằng tài khoản Quản trị viên để quản lý hệ thống.', false);
     }
   }
 
@@ -108,32 +110,64 @@ async function initAuth() {
     }
   });
 
-  const adminGoogleQuickBtn = document.getElementById('adminGoogleQuickBtn');
-  if (adminGoogleQuickBtn) {
-    adminGoogleQuickBtn.addEventListener('click', async function () {
-      if (!window.IWApi || !window.IWApi.isConfigured()) {
-        setMessage('API backend chưa được cấu hình.', true);
+  const adminGoogleContainer = document.getElementById('adminGoogleBtnContainer');
+  async function initAdminGoogleLogin() {
+    if (!adminGoogleContainer || !window.IWApi || !window.IWApi.isConfigured()) return;
+    try {
+      const health = await window.IWApi.request('/api/health').catch(() => null);
+      const cid = (health && health.googleClientId) || (window.IW_CONFIG && window.IW_CONFIG.googleClientId) || '';
+      if (!cid) {
+        adminGoogleContainer.innerHTML = '<span style="font-size:0.83rem;color:#64748b;text-align:center;">Chưa cấu hình GOOGLE_CLIENT_ID trong file .env</span>';
         return;
       }
-      adminGoogleQuickBtn.disabled = true;
-      setMessage('Đang đăng nhập bằng Google…', false);
-      try {
-        const result = await window.IWApi.request('/api/auth/google-quick-admin', {
-          method: 'POST'
-        });
-        if (result.user && result.user.role === 'admin') {
-          showToast('✅ Đăng nhập Quản trị viên Google thành công!');
-          await enterAdmin(result.user);
-        } else {
-          setMessage('Không thể xác thực quyền quản trị.', true);
+      let attempts = 0;
+      const checkGis = setInterval(() => {
+        attempts++;
+        if (window.google && window.google.accounts && window.google.accounts.id) {
+          clearInterval(checkGis);
+          window.google.accounts.id.initialize({
+            client_id: cid,
+            itp_support: true,
+            callback: async function (response) {
+              if (!response || !response.credential) return;
+              setMessage('Đang xác thực tài khoản Google…', false);
+              try {
+                const result = await window.IWApi.request('/api/auth/google', {
+                  method: 'POST',
+                  body: JSON.stringify({ credential: response.credential })
+                });
+                if (result.user && result.user.role === 'admin') {
+                  showToast('✅ Đăng nhập Quản trị viên Google thành công!');
+                  await enterAdmin(result.user);
+                } else {
+                  setMessage('Tài khoản ' + (result.user ? result.user.email : '') + ' là tài khoản Học viên, không có quyền quản trị! Vui lòng dùng tài khoản Admin (mngoc1285l@gmail.com).', true);
+                }
+              } catch (err) {
+                setMessage('Lỗi xác thực Google: ' + (err.message || 'Lỗi server'), true);
+              }
+            },
+            auto_select: false
+          });
+          adminGoogleContainer.innerHTML = '';
+          window.google.accounts.id.renderButton(adminGoogleContainer, {
+            type: 'standard',
+            theme: 'outline',
+            size: 'large',
+            text: 'signin_with',
+            shape: 'rectangular',
+            logo_alignment: 'left',
+            locale: 'vi',
+            width: 320
+          });
+        } else if (attempts > 30) {
+          clearInterval(checkGis);
         }
-      } catch (err) {
-        setMessage('Lỗi đăng nhập Google: ' + (err.message || 'Lỗi server'), true);
-      } finally {
-        adminGoogleQuickBtn.disabled = false;
-      }
-    });
+      }, 200);
+    } catch (e) {
+      console.warn('[admin-google] init error:', e);
+    }
   }
+  initAdminGoogleLogin();
 
   logoutBtn.addEventListener('click', async function () {
     logoutBtn.disabled = true;
@@ -174,6 +208,7 @@ function initTabs() {
       if (target === 'prompts') renderPromptsTable();
       if (target === 'ideas') renderIdeasTab();
       if (target === 'submissions') renderSubmissionsTable();
+      if (target === 'students') renderStudentsTab();
       if (target === 'settings') renderSettingsTab();
     });
   });
@@ -182,6 +217,14 @@ function initTabs() {
   if (quickAddBtn) {
     quickAddBtn.addEventListener('click', () => {
       openPromptModal();
+    });
+  }
+
+  const refreshStudentsBtn = document.getElementById('refreshStudentsBtn');
+  if (refreshStudentsBtn) {
+    refreshStudentsBtn.addEventListener('click', () => {
+      renderStudentsTab();
+      showToast('🔄 Đã làm mới danh sách học viên!');
     });
   }
 }
@@ -582,9 +625,113 @@ async function renderSettingsTab() {
   }
 }
 
+/* ---------------- STUDENTS TAB ---------------- */
+async function renderStudentsTab() {
+  const tbody = document.getElementById('studentsTableBody');
+  const badgeStudents = document.getElementById('sidebarBadgeStudents');
+  if (!tbody) return;
+
+  if (!window.IWApi || !window.IWApi.isConfigured()) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--admin-ink-soft);">Chưa cấu hình API backend.</td></tr>';
+    return;
+  }
+
+  try {
+    const res = await window.IWApi.request('/api/admin/users');
+    const users = (res && res.users) || [];
+
+    if (badgeStudents) {
+      const studentCount = users.filter(function (u) { return u.role === 'student'; }).length;
+      badgeStudents.textContent = studentCount;
+    }
+
+    if (users.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--admin-ink-soft);">Chưa có tài khoản nào trong hệ thống.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = users.map(function (u) {
+      const isAdmin = u.role === 'admin';
+      const roleBadge = isAdmin
+        ? '<span class="badge-tag" style="background:#EEF2FF;color:#4F46E5;font-weight:700;">👑 Admin</span>'
+        : '<span class="badge-tag badge-sage" style="font-weight:600;">🎓 Học viên</span>';
+
+      const createdDate = u.created_at
+        ? new Date(u.created_at).toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+        : 'Gần đây';
+
+      const subsCount = Number(u.total_submissions || 0);
+      const subsBadge = subsCount > 0
+        ? '<span class="badge-tag badge-default" style="font-weight:600;">' + subsCount + ' bài</span>'
+        : '<span style="color:#94A3B8;font-size:0.85rem;">Chưa làm bài</span>';
+
+      const isCurrentAdmin = window.IWAuth && window.IWAuth.currentUser && window.IWAuth.currentUser.email === u.email;
+
+      let actionButtons = '';
+      if (isCurrentAdmin) {
+        actionButtons = '<span style="color:#94A3B8;font-size:0.85rem;font-weight:600;">(Tài khoản hiện tại)</span>';
+      } else {
+        const toggleRoleBtn = '<button type="button" class="btn-secondary btn-sm toggle-role-btn" data-user-id="' + escapeHtmlAdmin(u.id) + '" data-role="' + (isAdmin ? 'student' : 'admin') + '">' +
+          (isAdmin ? 'Chuyển thành Học viên' : 'Nâng lên Admin') + '</button>';
+        const viewSubsBtn = subsCount > 0
+          ? ' <button type="button" class="btn-secondary btn-sm view-user-subs-btn" data-email="' + escapeHtmlAdmin(u.email) + '">Xem bài</button>'
+          : '';
+        actionButtons = toggleRoleBtn + viewSubsBtn;
+      }
+
+      return '<tr>' +
+        '<td><div style="display:flex;align-items:center;gap:8px;"><code>' + escapeHtmlAdmin(u.email) + '</code></div></td>' +
+        '<td>' + roleBadge + '</td>' +
+        '<td>' + subsBadge + '</td>' +
+        '<td style="color:#64748B;font-size:0.88rem;">' + escapeHtmlAdmin(createdDate) + '</td>' +
+        '<td style="text-align:right;">' + actionButtons + '</td>' +
+        '</tr>';
+    }).join('');
+
+    // Attach role toggle events
+    tbody.querySelectorAll('.toggle-role-btn').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        const userId = btn.dataset.userId;
+        const newRole = btn.dataset.role;
+        btn.disabled = true;
+        try {
+          await window.IWApi.request('/api/admin/users/' + encodeURIComponent(userId) + '/role', {
+            method: 'PUT',
+            body: JSON.stringify({ role: newRole })
+          });
+          showToast('✅ Đã cập nhật quyền tài khoản thành công!');
+          await renderStudentsTab();
+        } catch (err) {
+          showToast('❌ Lỗi cập nhật quyền: ' + (err.message || 'Lỗi'));
+          btn.disabled = false;
+        }
+      });
+    });
+
+    // Attach view user submissions event
+    tbody.querySelectorAll('.view-user-subs-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const email = btn.dataset.email;
+        const subTabBtn = document.querySelector('.sidebar-link[data-tab="submissions"]');
+        if (subTabBtn) subTabBtn.click();
+        const searchInput = document.getElementById('globalSearchInput');
+        if (searchInput) {
+          searchInput.value = email;
+          searchInput.dispatchEvent(new Event('input'));
+        }
+      });
+    });
+
+  } catch (error) {
+    console.error('[admin] load students error:', error);
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#EF4444;">Không thể tải danh sách học viên: ' + escapeHtmlAdmin(error.message) + '</td></tr>';
+  }
+}
+
 /* ---------------- EVENT LISTENERS & CRUD BINDINGS ---------------- */
 function initAdminData() {
   renderOverview();
+  renderStudentsTab();
 
   // Overview Pagination & Search
   const prevBtn = document.getElementById('pagePrevBtn');

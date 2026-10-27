@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config(); // Google OAuth & MySQL Active
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -55,7 +55,12 @@ async function queryDb(sql, params = []) {
 
 app.disable('x-powered-by');
 app.set('trust proxy', isProduction ? 1 : false);
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' }, contentSecurityPolicy: false }));
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  contentSecurityPolicy: false
+}));
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.has(origin)) return callback(null, true);
@@ -320,8 +325,12 @@ app.post('/api/auth/google', loginLimiter, async function (req, res) {
       return res.status(401).json({ error: 'GOOGLE_EMAIL_INVALID', message: 'Google không cung cấp địa chỉ email hợp lệ.' });
     }
     const name = String(claims.name || claims.given_name || email.split('@')[0]).slice(0, 200);
-    const configuredAdminEmail = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
-    const isConfiguredAdmin = Boolean(configuredAdminEmail) && email === configuredAdminEmail;
+    const configuredAdminEmails = String(process.env.ADMIN_EMAIL || '')
+      .toLowerCase()
+      .split(',')
+      .map(function (e) { return e.trim(); })
+      .filter(Boolean);
+    const isConfiguredAdmin = configuredAdminEmails.includes(email);
 
     // Production must never issue ephemeral in-memory sessions or accept demo identities.
     if (!hasDb()) {
@@ -363,6 +372,9 @@ app.post('/api/auth/google', loginLimiter, async function (req, res) {
     if (isConfiguredAdmin && row.role !== 'admin') {
       await queryDb('UPDATE app_users SET role = ? WHERE id = ?', ['admin', row.id]);
       row.role = 'admin';
+    } else if (!isConfiguredAdmin && row.role === 'admin' && !['admin@example.com'].includes(email)) {
+      await queryDb('UPDATE app_users SET role = ? WHERE id = ?', ['student', row.id]);
+      row.role = 'student';
     }
 
     const token = crypto.randomBytes(32).toString('base64url');
@@ -570,6 +582,42 @@ app.get('/api/admin/submissions', requireAuth, requireAdmin, async function (req
   } catch (error) {
     console.error('[admin] submissions read failed:', error.message);
     res.status(500).json({ error: 'SUBMISSIONS_READ_FAILED' });
+  }
+});
+
+app.get('/api/admin/users', requireAuth, requireAdmin, async function (req, res) {
+  if (!hasDb()) {
+    const users = Array.from(localSessions.values()).map(function (s) { return s.user; });
+    return res.json({ users: users });
+  }
+  try {
+    const result = await queryDb(
+      'SELECT u.id, u.email, u.role, u.created_at, COUNT(k.`key`) AS total_submissions ' +
+      'FROM app_users u ' +
+      "LEFT JOIN user_kv k ON k.user_id = u.id AND k.`key` LIKE 'iw:attempt:%' " +
+      'GROUP BY u.id, u.email, u.role, u.created_at ' +
+      'ORDER BY u.created_at DESC'
+    );
+    res.json({ users: result.rows });
+  } catch (error) {
+    console.error('[admin] users read failed:', error.message);
+    res.status(500).json({ error: 'USERS_READ_FAILED' });
+  }
+});
+
+app.put('/api/admin/users/:id/role', requireAuth, requireAdmin, async function (req, res) {
+  const targetId = req.params.id;
+  const newRole = req.body && req.body.role;
+  if (!['student', 'admin'].includes(newRole)) {
+    return res.status(400).json({ error: 'INVALID_ROLE' });
+  }
+  if (!hasDb()) return res.json({ ok: true });
+  try {
+    await queryDb('UPDATE app_users SET role = ? WHERE id = ?', [newRole, targetId]);
+    res.json({ ok: true, id: targetId, role: newRole });
+  } catch (error) {
+    console.error('[admin] update user role failed:', error.message);
+    res.status(500).json({ error: 'ROLE_UPDATE_FAILED' });
   }
 });
 

@@ -25,9 +25,30 @@
     updateButton() {
       const button = document.getElementById('accountBtn');
       const label = document.getElementById('accountBtnLabel');
+      const avatar = document.getElementById('accountBtnAvatar');
+      const topbarAdminLink = document.getElementById('topbarAdminLink');
+      if (topbarAdminLink) {
+        topbarAdminLink.style.display = (this.currentUser && this.currentUser.role === 'admin') ? 'inline-flex' : 'none';
+      }
       if (!button || !label) return;
-      label.textContent = this.currentUser ? this.currentUser.email : 'Đăng nhập';
-      button.title = this.currentUser ? 'Tài khoản và đăng xuất' : 'Đăng nhập để đồng bộ tiến độ';
+      if (this.currentUser) {
+        const fullEmail = this.currentUser.email || '';
+        const username = fullEmail.split('@')[0] || 'Tài khoản';
+        label.textContent = username;
+        button.title = 'Tài khoản: ' + fullEmail + ' (Bấm để xem/đăng xuất)';
+        if (avatar) {
+          const initial = username.charAt(0).toUpperCase();
+          avatar.innerHTML = '<span class="account-avatar-initial">' + initial + '</span>';
+        }
+        button.classList.add('is-logged-in');
+      } else {
+        label.textContent = 'Đăng nhập';
+        button.title = 'Đăng nhập để đồng bộ tiến độ';
+        if (avatar) {
+          avatar.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+        }
+        button.classList.remove('is-logged-in');
+      }
     },
     setMessage(message, isError) {
       const el = document.getElementById('authMessage');
@@ -127,6 +148,8 @@
       const loginForm = document.getElementById('accountLoginForm');
       const segmentedTabs = document.getElementById('authSegmentedTabs');
       const profileEmail = document.getElementById('profileCardEmail');
+      const profileCardTag = document.getElementById('profileCardTag');
+      const profileAdminPortalBtn = document.getElementById('profileAdminPortalBtn');
       const title = document.getElementById('authModalTitle');
       const subtitle = document.getElementById('authModalSubtitle');
 
@@ -135,8 +158,18 @@
         if (loginForm) loginForm.hidden = true;
         if (segmentedTabs) segmentedTabs.style.display = 'none';
         if (profileEmail) profileEmail.textContent = this.currentUser.email || 'Học viên';
-        if (title) title.textContent = 'Tài khoản học viên';
-        if (subtitle) subtitle.textContent = 'Thông tin phiên đăng nhập & đồng bộ dữ liệu';
+        const isAdmin = this.currentUser.role === 'admin';
+        if (profileCardTag) {
+          profileCardTag.textContent = isAdmin ? '⭐ Quản trị viên (Admin)' : 'Học viên Intensive Writer';
+          profileCardTag.style.background = isAdmin ? '#EEF2FF' : '';
+          profileCardTag.style.color = isAdmin ? '#4F46E5' : '';
+          profileCardTag.style.fontWeight = isAdmin ? '700' : '';
+        }
+        if (profileAdminPortalBtn) {
+          profileAdminPortalBtn.style.display = isAdmin ? 'flex' : 'none';
+        }
+        if (title) title.textContent = isAdmin ? 'Tài khoản Quản trị' : 'Tài khoản học viên';
+        if (subtitle) subtitle.textContent = isAdmin ? 'Bạn có toàn quyền quản lý hệ thống' : 'Thông tin phiên đăng nhập & đồng bộ dữ liệu';
       } else {
         if (profileView) profileView.hidden = true;
         if (loginForm) loginForm.hidden = false;
@@ -436,7 +469,8 @@
           client_id: cid,
           callback: handleGoogleCredential,
           auto_select: false,
-          cancel_on_tap_outside: true
+          cancel_on_tap_outside: true,
+          itp_support: true
         });
         googleGisInitialized = true;
         if (googleBtn && window.google.accounts.id.renderButton) {

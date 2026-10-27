@@ -1,14 +1,18 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Intensive Writer — Trang Quản Trị Viên (Admin Portal)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="css/admin.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
+
 <body>
 
   <!-- Server-side admin authentication; no client-side PIN. -->
@@ -17,21 +21,36 @@
       <div class="auth-icon">🌻</div>
       <h2>Quản trị viên</h2>
       <div class="auth-notice-card">
-        <div class="auth-notice-title">🌻 Tài khoản quản trị mặc định:</div>
-        <div>Email: <code class="auth-code-badge">admin@example.com</code></div>
-        <div>Mật khẩu: <code class="auth-code-badge">admin12345678</code></div>
+        <div class="auth-notice-title">🌻 Tài khoản quản trị viên:</div>
+        <div>Đăng nhập 1 chạm với Google bằng: <strong style="color:#38bdf8;">mngoc1285l@gmail.com</strong></div>
+        <div style="margin-top:4px;font-size:0.83rem;color:#94a3b8;">Hoặc đăng nhập mật khẩu:
+          <code>admin@example.com</code> / <code>admin12345678</code>
+        </div>
       </div>
       <form id="pinForm">
         <label class="admin-login-label" for="adminEmailInput">Email quản trị</label>
-        <input type="email" id="adminEmailInput" class="pin-input" value="admin@example.com" placeholder="admin@example.com" autocomplete="username" required>
+        <input type="email" id="adminEmailInput" class="pin-input" value="admin@example.com"
+          placeholder="admin@example.com" autocomplete="username" required>
         <label class="admin-login-label" for="adminPasswordInput">Mật khẩu</label>
-        <input type="password" id="adminPasswordInput" class="pin-input" value="admin12345678" placeholder="Mật khẩu quản trị" autocomplete="current-password" required>
+        <input type="password" id="adminPasswordInput" class="pin-input" value="admin12345678"
+          placeholder="Mật khẩu quản trị" autocomplete="current-password" required>
         <p id="adminAuthMessage" class="auth-message" role="status" aria-live="polite"></p>
         <button type="submit" class="btn-primary auth-submit-btn">Đăng nhập quản trị</button>
       </form>
       <div class="auth-divider"><span>HOẶC</span></div>
-      <button type="button" id="adminGoogleQuickBtn" class="admin-google-btn">
-        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+      <div id="adminGoogleBtnContainer" style="display:flex;justify-content:center;margin-bottom:12px;min-height:44px;">
+      </div>
+      <button type="button" id="adminGoogleQuickBtn" class="admin-google-btn" style="display:none;">
+        <svg width="18" height="18" viewBox="0 0 24 24">
+          <path fill="#4285F4"
+            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+          <path fill="#34A853"
+            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+          <path fill="#FBBC05"
+            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+          <path fill="#EA4335"
+            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+        </svg>
         <span>Đăng nhập nhanh với Google</span>
       </button>
       <p class="auth-back-link-wrapper"><a href="../web/" class="auth-back-link">← Quay lại trang Luyện viết</a></p>
@@ -45,9 +64,12 @@
     <aside class="admin-sidebar">
       <div class="sidebar-brand">
         <div class="brand-icon-box">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+            </path>
           </svg>
         </div>
         <div class="brand-text-group">
@@ -82,6 +104,7 @@
         <button type="button" class="sidebar-link" data-tab="students">
           <span class="sidebar-icon">👥</span>
           <span class="sidebar-label">Tài khoản học viên</span>
+          <span class="sidebar-badge badge-sage" id="sidebarBadgeStudents">0</span>
         </button>
       </nav>
 
@@ -97,7 +120,8 @@
             <div class="admin-email" id="sidebarAdminEmail">admin@intensive.edu</div>
           </div>
           <button type="button" id="logoutBtn" class="logout-btn" title="Đăng xuất" aria-label="Đăng xuất">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
               <polyline points="16 17 21 12 16 7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -117,7 +141,8 @@
         </div>
         <div class="header-actions">
           <div class="header-search-box">
-            <svg class="search-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg class="search-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
@@ -127,11 +152,15 @@
           <div class="header-filter-dropdown">
             <button type="button" class="btn-time-filter" id="timeFilterBtn">
               <span>Toàn bộ thời gian</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
             </button>
           </div>
-          <button type="button" class="header-notif-btn" id="adminNotifBtn" title="Thông báo" aria-label="Xem thông báo">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <button type="button" class="header-notif-btn" id="adminNotifBtn" title="Thông báo"
+            aria-label="Xem thông báo">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
               <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
             </svg>
@@ -177,7 +206,8 @@
           </div>
 
           <div class="filter-bar">
-            <input type="text" id="promptSearchInput" class="search-input" placeholder="Tìm kiếm theo từ khóa hoặc tiêu đề...">
+            <input type="text" id="promptSearchInput" class="search-input"
+              placeholder="Tìm kiếm theo từ khóa hoặc tiêu đề...">
             <select id="promptThemeFilter" class="select-input">
               <option value="">Tất cả chủ đề</option>
               <option value="Education">Education</option>
@@ -273,8 +303,11 @@
           <div class="pane-header">
             <div class="pane-title">
               <h3>Quản lý Tài khoản học viên</h3>
-              <p>Danh sách học viên đăng ký trên hệ thống Intensive Writer</p>
+              <p>Danh sách học viên đăng ký trên hệ thống Intensive Writer (đồng bộ thời gian thực từ CSDL MySQL)</p>
             </div>
+            <button type="button" id="refreshStudentsBtn" class="btn-primary" style="display:flex;align-items:center;gap:6px;">
+              <span>🔄 Làm mới danh sách</span>
+            </button>
           </div>
           <div class="table-container">
             <table class="admin-table">
@@ -282,23 +315,13 @@
                 <tr>
                   <th>Tài khoản Email</th>
                   <th>Vai trò</th>
-                  <th>Trạng thái</th>
+                  <th>Số bài viết</th>
+                  <th>Ngày đăng ký</th>
                   <th class="text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody id="studentsTableBody">
-                <tr>
-                  <td><code>admin@example.com</code></td>
-                  <td><span class="badge-tag badge-default">Admin</span></td>
-                  <td><span class="badge-tag badge-sage">Đang hoạt động</span></td>
-                  <td class="text-right"><button type="button" class="btn-secondary btn-sm" disabled>Mặc định</button></td>
-                </tr>
-                <tr>
-                  <td><code>hocvien@intensive.edu</code></td>
-                  <td><span class="badge-tag badge-default">Student</span></td>
-                  <td><span class="badge-tag badge-sage">Đang hoạt động</span></td>
-                  <td class="text-right"><button type="button" class="btn-secondary btn-sm" onclick="showToast('Xem bài viết học viên!')">Xem bài</button></td>
-                </tr>
+                <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--admin-ink-soft);">Đang tải danh sách học viên từ máy chủ…</td></tr>
               </tbody>
             </table>
           </div>
@@ -317,13 +340,15 @@
             <!-- Server-side AI and account security -->
             <div class="metric-card metric-card-gap">
               <h4 class="card-heading">🤖 AI server</h4>
-              <p class="card-desc">Khóa ANTHROPIC_API_KEY chỉ được thiết lập trong Environment Variables của backend. Không nhập hoặc lưu khóa API trong trình duyệt.</p>
+              <p class="card-desc">Khóa ANTHROPIC_API_KEY chỉ được thiết lập trong Environment Variables của backend.
+                Không nhập hoặc lưu khóa API trong trình duyệt.</p>
               <p id="adminApiStatus" class="card-desc">Trạng thái AI được xác định từ API server.</p>
             </div>
 
             <div class="metric-card metric-card-gap">
               <h4 class="card-heading">🔒 Bảo mật quản trị</h4>
-              <p class="card-desc">Quyền quản trị được xác thực ở server. Tài khoản admin đầu tiên được tạo từ ADMIN_EMAIL và ADMIN_PASSWORD khi backend khởi động lần đầu.</p>
+              <p class="card-desc">Quyền quản trị được xác thực ở server. Tài khoản admin đầu tiên được tạo từ
+                ADMIN_EMAIL và ADMIN_PASSWORD khi backend khởi động lần đầu.</p>
               <p class="card-desc">Hãy dùng mật khẩu mạnh, bật HTTPS và không chia sẻ phiên đăng nhập quản trị.</p>
             </div>
 
@@ -331,14 +356,16 @@
             <div class="metric-card metric-card-gap">
               <h4 class="card-heading">📦 Sao lưu dữ liệu (Export)</h4>
               <p class="card-desc">Tải về toàn bộ danh sách đề bài, ý tưởng và lịch sử viết bài dưới dạng JSON.</p>
-              <button type="button" id="exportDataBtn" class="btn-secondary btn-sm btn-align-start">📥 Xuất dữ liệu (.json)</button>
+              <button type="button" id="exportDataBtn" class="btn-secondary btn-sm btn-align-start">📥 Xuất dữ liệu
+                (.json)</button>
             </div>
 
             <!-- Import & Reset -->
             <div class="metric-card metric-card-gap">
               <h4 class="card-heading">🔄 Khôi phục dữ liệu gốc</h4>
               <p class="card-desc">Đặt lại toàn bộ 12 đề thi và ngân hàng ý tưởng về trạng thái mặc định ban đầu.</p>
-              <button type="button" id="resetDataBtn" class="btn-danger btn-sm btn-align-start">⚠️ Đặt lại mặc định</button>
+              <button type="button" id="resetDataBtn" class="btn-danger btn-sm btn-align-start">⚠️ Đặt lại mặc
+                định</button>
             </div>
           </div>
         </section>
@@ -354,12 +381,14 @@
           <div class="table-container ai-config-container">
             <div class="form-group">
               <label>System Prompt phân tích IELTS Task 2:</label>
-              <textarea rows="6" readonly class="search-input">You are an elite IELTS Writing Task 2 examiner and pedagogical writing scaffold assistant. Evaluate the submitted paragraphs based on Grammatical Range &amp; Accuracy and Lexical Resource. Offer specific sentence improvements and positive collocations.</textarea>
+              <textarea rows="6" readonly
+                class="search-input">You are an elite IELTS Writing Task 2 examiner and pedagogical writing scaffold assistant. Evaluate the submitted paragraphs based on Grammatical Range &amp; Accuracy and Lexical Resource. Offer specific sentence improvements and positive collocations.</textarea>
             </div>
             <div class="ai-config-row">
               <span class="badge-tag badge-sage">Model: Claude 3.5 Sonnet / 3.8</span>
               <span class="badge-tag badge-default">Max Tokens: 1800</span>
-              <button type="button" class="btn-secondary btn-sm" onclick="showToast('Cấu hình AI đang được áp dụng từ server!')">Kiểm tra kết nối</button>
+              <button type="button" class="btn-secondary btn-sm"
+                onclick="showToast('Cấu hình AI đang được áp dụng từ server!')">Kiểm tra kết nối</button>
             </div>
           </div>
         </section>
@@ -390,11 +419,13 @@
           </div>
           <div class="form-group">
             <label>Dạng bài (Type):</label>
-            <input type="text" id="promptTypeInput" placeholder="Ví dụ: Advantages &amp; Disadvantages, Opinion..." required>
+            <input type="text" id="promptTypeInput" placeholder="Ví dụ: Advantages &amp; Disadvantages, Opinion..."
+              required>
           </div>
           <div class="form-group">
             <label>Tiêu đề đề bài (Essay Prompt):</label>
-            <textarea id="promptTitleInput" rows="4" placeholder="Nhập nguyên văn đề thi IELTS Task 2 bằng tiếng Anh..." required></textarea>
+            <textarea id="promptTitleInput" rows="4" placeholder="Nhập nguyên văn đề thi IELTS Task 2 bằng tiếng Anh..."
+              required></textarea>
           </div>
         </div>
         <div class="modal-foot">
@@ -468,4 +499,5 @@
   <script src="../shared/js/data.js"></script>
   <script src="js/admin.js"></script>
 </body>
+
 </html>
