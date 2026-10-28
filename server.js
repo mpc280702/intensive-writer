@@ -14,6 +14,7 @@ const scrypt = promisify(crypto.scrypt);
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const isProduction = process.env.NODE_ENV === 'production';
+const localDemoAuthEnabled = !isProduction && process.env.ENABLE_LOCAL_DEMO_AUTH === 'true';
 const COOKIE_NAME = process.env.SESSION_COOKIE_NAME || 'iw_session';
 const SESSION_DAYS = 7;
 const allowedOrigins = new Set((process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000,https://mpc280702.github.io').split(',').map(function (v) { return v.trim(); }).filter(Boolean));
@@ -122,11 +123,19 @@ async function verifyPassword(password, stored) {
 const localSessions = new Map();
 const localKv = new Map();
 const localCourseContent = { prompts: null, ideas: null };
-const localAdmin = {
-  id: 'admin-local',
-  email: (process.env.ADMIN_EMAIL || 'admin@example.com').trim().toLowerCase(),
-  password: process.env.ADMIN_PASSWORD || 'admin12345678',
-  role: 'admin'
+const localDemoAccounts = {
+  admin: {
+    id: 'admin-local',
+    email: String(process.env.LOCAL_DEMO_ADMIN_EMAIL || '').trim().toLowerCase(),
+    password: String(process.env.LOCAL_DEMO_ADMIN_PASSWORD || ''),
+    role: 'admin'
+  },
+  student: {
+    id: 'student-local',
+    email: String(process.env.LOCAL_DEMO_STUDENT_EMAIL || '').trim().toLowerCase(),
+    password: String(process.env.LOCAL_DEMO_STUDENT_PASSWORD || ''),
+    role: 'student'
+  }
 };
 
 async function getUserFromRequest(req) {
@@ -176,10 +185,10 @@ app.get('/api/health', function (req, res) {
     databaseConfigured: hasDb(),
     databaseDriver: dbDriver || 'local-memory',
     aiConfigured: Boolean(process.env.ANTHROPIC_API_KEY),
-    registrationEnabled: process.env.ALLOW_STUDENT_SIGNUP === 'true',
+    registrationEnabled: hasDb() && process.env.ALLOW_STUDENT_SIGNUP === 'true',
     googleClientId: process.env.GOOGLE_CLIENT_ID || '',
     googleConfigured: Boolean(process.env.GOOGLE_CLIENT_ID),
-    localDemo: !hasDb()
+    localDemo: !hasDb() && localDemoAuthEnabled
   });
 });
 
@@ -191,12 +200,7 @@ app.post('/api/auth/register', loginLimiter, async function (req, res) {
   if (password.length < 10 || password.length > 200) return res.status(400).json({ error: 'WEAK_PASSWORD', message: 'Use a password with at least 10 characters.' });
   
   if (!hasDb()) {
-    const id = 'student-' + crypto.randomBytes(4).toString('hex');
-    const token = crypto.randomBytes(32).toString('base64url');
-    const user = { id, email, role: 'student' };
-    localSessions.set(hashToken(token), { user, expiresAt: Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000 });
-    setSessionCookie(res, token, SESSION_DAYS * 24 * 60 * 60);
-    return res.status(201).json({ user });
+    return res.status(503).json({ error: 'DATABASE_NOT_CONFIGURED', message: 'Đăng ký yêu cầu cơ sở dữ liệu bền vững.' });
   }
 
   try {
@@ -221,18 +225,20 @@ app.post('/api/auth/login', loginLimiter, async function (req, res) {
   if (!email || !password || password.length > 200) return res.status(400).json({ error: 'INVALID_CREDENTIALS' });
 
   if (!hasDb()) {
-    if (isProduction) return res.status(503).json({ error: 'DATABASE_NOT_CONFIGURED', message: 'Máy chủ chưa kết nối cơ sở dữ liệu; đăng nhập tạm thời bị khóa.' });
-    const isMatchedAdmin = (email === localAdmin.email || email === 'admin@example.com') &&
-      (password === localAdmin.password || password === 'admin12345678' || password === 'admin123' || password === 'admin');
-    const isMatchedStudent = (email === 'student@example.com' || email === 'google.student@example.com') &&
-      (password === 'student12345678' || password === 'google12345678' || password === 'student123' || password === 'student');
+    if (!localDemoAuthEnabled) {
+      return res.status(503).json({ error: 'DATABASE_NOT_CONFIGURED', message: 'Máy chủ chưa kết nối cơ sở dữ liệu; đăng nhập tạm thời bị khóa.' });
+    }
+    const admin = localDemoAccounts.admin;
+    const student = localDemoAccounts.student;
+    const isMatchedAdmin = Boolean(admin.email && admin.password && email === admin.email && password === admin.password);
+    const isMatchedStudent = Boolean(student.email && student.password && email === student.email && password === student.password);
     if (!isMatchedAdmin && !isMatchedStudent) {
-      return res.status(401).json({ error: 'INVALID_CREDENTIALS', message: 'Email hoặc mật khẩu không chính xác. Mặc định: student@example.com / student12345678' });
+      return res.status(401).json({ error: 'INVALID_CREDENTIALS', message: 'Email hoặc mật khẩu không chính xác.' });
     }
     const token = crypto.randomBytes(32).toString('base64url');
     const user = isMatchedAdmin
-      ? { id: 'admin-local', email: localAdmin.email, role: 'admin' }
-      : { id: 'student-local', email: email, role: 'student' };
+      ? { id: admin.id, email: admin.email, role: admin.role }
+      : { id: student.id, email: student.email, role: student.role };
     localSessions.set(hashToken(token), { user, expiresAt: Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000 });
     setSessionCookie(res, token, SESSION_DAYS * 24 * 60 * 60);
     return res.json({ user });
@@ -255,34 +261,8 @@ app.post('/api/auth/login', loginLimiter, async function (req, res) {
   }
 });
 
-app.post('/api/auth/google-demo', loginLimiter, async function (req, res) {
-  const email = 'google.student@example.com';
-  if (!hasDb()) {
-    const id = 'student-google';
-    const token = crypto.randomBytes(32).toString('base64url');
-    const user = { id, email, role: 'student' };
-    localSessions.set(hashToken(token), { user, expiresAt: Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000 });
-    setSessionCookie(res, token, SESSION_DAYS * 24 * 60 * 60);
-    return res.json({ user });
-  }
-  try {
-    const result = await queryDb('SELECT id, email, role FROM app_users WHERE email = ?', [email]);
-    let row = result.rows[0];
-    if (!row) {
-      const id = crypto.randomUUID ? crypto.randomUUID() : 'user-google-' + crypto.randomBytes(4).toString('hex');
-      const passwordHash = await hashPassword('google12345678');
-      await queryDb('INSERT INTO app_users (id, email, password_hash, role) VALUES (?, ?, ?, ?)', [id, email, passwordHash, 'student']);
-      row = { id, email, role: 'student' };
-    }
-    const token = crypto.randomBytes(32).toString('base64url');
-    const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
-    await queryDb('INSERT INTO app_sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)', [hashToken(token), row.id, expiresAt]);
-    setSessionCookie(res, token, SESSION_DAYS * 24 * 60 * 60);
-    res.json({ user: { id: row.id, email: row.email, role: row.role } });
-  } catch (err) {
-    console.error('[auth] google demo failed:', err.message);
-    res.status(500).json({ error: 'GOOGLE_LOGIN_FAILED' });
-  }
+app.post('/api/auth/google-demo', loginLimiter, function (req, res) {
+  return res.status(410).json({ error: 'UNSAFE_AUTH_FLOW_DISABLED', message: 'Đăng nhập Google demo đã bị tắt. Hãy dùng Google Sign-In chính thức.' });
 });
 
 // GOOGLE_OAUTH_VERIFIED_LOGIN_PATCH_V1: removed insecure endpoint that granted an admin session without Google verification.
@@ -332,17 +312,8 @@ app.post('/api/auth/google', loginLimiter, async function (req, res) {
       .filter(Boolean);
     const isConfiguredAdmin = configuredAdminEmails.includes(email);
 
-    // Production must never issue ephemeral in-memory sessions or accept demo identities.
     if (!hasDb()) {
-      if (isProduction) {
-        return res.status(503).json({ error: 'DATABASE_NOT_CONFIGURED', message: 'Máy chủ chưa kết nối cơ sở dữ liệu; đăng nhập tạm thời bị khóa.' });
-      }
-      const id = 'google-' + crypto.createHash('sha256').update(String(claims.sub)).digest('hex').slice(0, 32);
-      const user = { id, email, role: isConfiguredAdmin ? 'admin' : 'student', name };
-      const token = crypto.randomBytes(32).toString('base64url');
-      localSessions.set(hashToken(token), { user, expiresAt: Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000 });
-      setSessionCookie(res, token, SESSION_DAYS * 24 * 60 * 60);
-      return res.json({ user });
+      return res.status(503).json({ error: 'DATABASE_NOT_CONFIGURED', message: 'Đăng nhập Google yêu cầu cơ sở dữ liệu bền vững.' });
     }
 
     let found = await queryDb('SELECT id, email, role FROM app_users WHERE email = ?', [email]);
@@ -793,46 +764,28 @@ async function tryReconnectMysql() {
 
 async function seedDefaultUsers() {
   if (!hasDb()) return;
-  const adminEmail = String(process.env.ADMIN_EMAIL || 'admin@example.com').trim().toLowerCase();
-  const adminPassword = String(process.env.ADMIN_PASSWORD || 'admin12345678');
-  if (adminEmail && adminPassword) {
-    try {
-      const found = await queryDb('SELECT id FROM app_users WHERE email = ?', [adminEmail]);
-      if (!found.rows.length) {
-        const adminId = crypto.randomUUID ? crypto.randomUUID() : 'admin-' + crypto.randomBytes(4).toString('hex');
-        await queryDb('INSERT INTO app_users (id, email, password_hash, role) VALUES (?, ?, ?, ?)', [
-          adminId,
-          adminEmail,
-          await hashPassword(adminPassword),
-          'admin'
-        ]);
-        console.log('[startup] Đã tạo tài khoản Admin mặc định (' + adminEmail + ') vào MySQL/Database.');
-      }
-    } catch (err) {
-      console.error('[startup] Lỗi khởi tạo admin:', err.message);
-    }
+  const adminEmail = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  const adminPassword = String(process.env.ADMIN_PASSWORD || '');
+  if (!adminEmail || !adminPassword) {
+    console.warn('[startup] ADMIN_EMAIL and ADMIN_PASSWORD are required before an initial admin can be created.');
+    return;
   }
 
-  if (!isProduction) {
-    // Seed default student account
-    try {
-      const studentEmail = 'student@example.com';
-      const foundStudent = await queryDb('SELECT id FROM app_users WHERE email = ?', [studentEmail]);
-      if (!foundStudent.rows.length) {
-        const studentId = crypto.randomUUID ? crypto.randomUUID() : 'student-' + crypto.randomBytes(4).toString('hex');
-        await queryDb('INSERT INTO app_users (id, email, password_hash, role) VALUES (?, ?, ?, ?)', [
-          studentId,
-          studentEmail,
-          await hashPassword('student12345678'),
-          'student'
-        ]);
-        console.log('[startup] Đã tạo tài khoản Học viên mặc định (student@example.com) vào MySQL/Database.');
-      }
-    } catch (err) {
-      console.error('[startup] Lỗi khởi tạo student:', err.message);
+  try {
+    const found = await queryDb('SELECT id FROM app_users WHERE email = ?', [adminEmail]);
+    if (!found.rows.length) {
+      const adminId = crypto.randomUUID ? crypto.randomUUID() : 'admin-' + crypto.randomBytes(4).toString('hex');
+      await queryDb('INSERT INTO app_users (id, email, password_hash, role) VALUES (?, ?, ?, ?)', [
+        adminId,
+        adminEmail,
+        await hashPassword(adminPassword),
+        'admin'
+      ]);
+      console.log('[startup] Created the configured administrator account.');
     }
+  } catch (err) {
+    console.error('[startup] Could not initialize the administrator account:', err.message);
   }
-
 }
 
 async function start() {
