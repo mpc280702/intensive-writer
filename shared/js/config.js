@@ -1,2 +1,9 @@
-/* On GitHub Pages, set apiBaseUrl to your deployed API URL. Example: https://your-api-service.onrender.com. Leave blank for local/server same-origin mode. Never put keys here. Set allowStudentSignup true only when ALLOW_STUDENT_SIGNUP=true on the API server. */
-window.IW_CONFIG = window.IW_CONFIG || { apiBaseUrl: '', allowStudentSignup: true, googleClientId: '509797338497-8rmk6lsn7u65dlnkqqf404pqdjd09ja1.apps.googleusercontent.com' };
+/* Public runtime configuration. Keep secrets exclusively on the API server.
+ * Leave apiBaseUrl empty on a demo-only GitHub Pages deployment. When an HTTPS API
+ * is deployed, set it here (for example https://api.example.com). Registration is
+ * intentionally opt-in in both this file and the API service. */
+window.IW_CONFIG = window.IW_CONFIG || {
+  apiBaseUrl: '',
+  allowStudentSignup: false,
+  googleClientId: '509797338497-8rmk6lsn7u65dlnkqqf404pqdjd09ja1.apps.googleusercontent.com'
+};
