@@ -173,10 +173,28 @@ function renderPractice() {
   PROMPTS = DataManager.getPrompts();
   IDEAS = DataManager.getAllIdeas();
   const el = document.getElementById('view-practice');
-  if (practice.stage === 'prompts') return renderPrompts(el);
-  if (practice.stage === 'ideasBank') return renderIdeasBank(el);
-  if (practice.stage === 'outline') return renderOutline(el);
-  if (practice.stage === 'writing') return renderWriting(el);
+  if (practice.stage === 'prompts') renderPrompts(el);
+  else if (practice.stage === 'ideasBank') renderIdeasBank(el);
+  else if (practice.stage === 'outline') renderOutline(el);
+  else if (practice.stage === 'writing') renderWriting(el);
+  renderServiceModeNotice(el);
+}
+
+function renderServiceModeNotice(el) {
+  if (!el) return;
+  const apiConfigured = Boolean(window.IWApi && window.IWApi.isConfigured && window.IWApi.isConfigured());
+  const signedIn = Boolean(window.IWAuth && window.IWAuth.currentUser);
+  if (apiConfigured && signedIn) return;
+
+  const message = apiConfigured
+    ? 'Bạn đang chưa đăng nhập. Bản nháp vẫn được lưu trên thiết bị; đăng nhập để đồng bộ và dùng AI qua server.'
+    : 'Bạn đang dùng bản demo cục bộ. Bản nháp chỉ lưu trên trình duyệt này và phản hồi là gợi ý offline, không phải chấm AI hay band IELTS chính thức.';
+  const notice = document.createElement('div');
+  notice.className = 'service-mode-notice';
+  notice.setAttribute('role', 'status');
+  notice.style.cssText = 'margin:0 0 18px;padding:12px 14px;border:1px solid #F5C56A;border-radius:10px;background:#FFF8E8;color:#694B10;font-size:.92rem;line-height:1.5;';
+  notice.innerHTML = '<strong>' + (apiConfigured ? 'Chế độ chưa đồng bộ' : 'Chế độ demo cục bộ') + '</strong><br>' + escapeHtml(message);
+  el.prepend(notice);
 }
 
 /* PROMPTS SELECTION SCREEN */
@@ -780,7 +798,8 @@ function renderFeedbackHTML(fb) {
 
   return `
     <div class="feedback-box">
-      ${fb.band_estimate ? `<span class="band-pill">Ước lượng band điểm: ${escapeHtml(String(fb.band_estimate))}</span>` : ''}
+      ${fb.band_estimate ? `<span class="band-pill">Ước lượng GRA &amp; LR cho đoạn văn: ${escapeHtml(String(fb.band_estimate))}</span>
+      <div class="fb-note">Đây không phải band IELTS Writing tổng thể; Task Response và Coherence &amp; Cohesion cần được đánh giá trên toàn bài.</div>` : ''}
       ${grammar ? `<div class="fb-group grammar"><h6>Chỉnh sửa ngữ pháp (${(fb.grammar_issues || []).length})</h6>${grammar}</div>` : ''}
       ${vocab ? `<div class="fb-group vocab"><h6>Gợi ý nâng cấp từ vựng (${(fb.vocab_issues || []).length})</h6>${vocab}</div>` : ''}
       ${good ? `<div class="fb-group good"><h6>Điểm sáng & Cụm từ hay</h6>${good}</div>` : ''}
