@@ -40,6 +40,8 @@ Mở `shared/js/config.js` và đặt `apiBaseUrl` thành URL HTTPS của API, v
 
 GitHub Pages chỉ phục vụ frontend tĩnh. Backend và PostgreSQL phải được triển khai riêng. Có thể chạy toàn bộ dự án bằng `npm install` và `npm start` ở local; khi chưa có database, ứng dụng vẫn mở ở chế độ local/demo nhưng tài khoản, cloud sync và server AI sẽ không hoạt động.
 
+Đăng nhập không có database bị khóa mặc định để tránh tài khoản demo xuất hiện trên một host public. Chỉ phục vụ smoke test localhost khi đặt `ENABLE_LOCAL_DEMO_AUTH=true` cùng email/mật khẩu demo riêng trong `.env`; tuyệt đối không bật cờ này trên môi trường public.
+
 ### 4) Cookie và domain
 
 Backend dùng session cookie `HttpOnly`. Khi frontend ở `github.io` và API ở một domain khác, cookie cross-site có thể bị chặn bởi chính sách quyền riêng tư của trình duyệt. Cách triển khai đáng tin cậy hơn là dùng custom domain để frontend và API cùng site, hoặc phục vụ frontend từ chính Node server.
