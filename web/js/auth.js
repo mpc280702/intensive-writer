@@ -4,7 +4,32 @@
   const auth = {
     currentUser: null,
     mode: 'login',
+    capabilities: { registrationEnabled: false },
+    async refreshCapabilities() {
+      let registrationEnabled = false;
+      if (window.IWApi && window.IWApi.isConfigured()) {
+        try {
+          const health = await window.IWApi.request('/api/health');
+          const clientOptIn = Boolean(window.IW_CONFIG && window.IW_CONFIG.allowStudentSignup);
+          registrationEnabled = clientOptIn && Boolean(health && health.registrationEnabled);
+        } catch (error) {
+          registrationEnabled = false;
+        }
+      }
+
+      this.capabilities.registrationEnabled = registrationEnabled;
+      const registerTab = document.getElementById('authTabRegister');
+      if (registerTab) {
+        registerTab.hidden = !registrationEnabled;
+        registerTab.disabled = !registrationEnabled;
+        registerTab.setAttribute('aria-hidden', String(!registrationEnabled));
+      }
+      const switchText = document.querySelector('.auth-switch-text');
+      if (switchText) switchText.hidden = !registrationEnabled;
+      return this.capabilities;
+    },
     async bootstrap() {
+      await this.refreshCapabilities();
       if (!window.IWApi || !window.IWApi.isConfigured()) {
         this.currentUser = null;
         if (window.storage) window.storage.setUser('guest');
@@ -57,6 +82,9 @@
       el.classList.toggle('error', Boolean(isError));
     },
     setMode(newMode) {
+      const registrationDisabled = newMode === 'register' && !this.capabilities.registrationEnabled;
+      const recoveryUnavailable = newMode === 'forgot';
+      if (registrationDisabled || recoveryUnavailable) newMode = 'login';
       this.mode = newMode;
       const modalBox = document.getElementById('authModalBox');
       const tabLogin = document.getElementById('authTabLogin');
@@ -80,10 +108,6 @@
         if (cancelBtn) cancelBtn.textContent = 'Hủy bỏ';
         if (promptText) promptText.textContent = 'Nhớ mật khẩu?';
         if (switchLink) switchLink.textContent = 'Đăng nhập';
-        const emailInput = document.getElementById('accountEmail');
-        if (emailInput && !emailInput.value) {
-          emailInput.value = 'mngoc1285l@gmail.com';
-        }
         this.startOtpTimer();
         this.setMessage('', false);
       } else if (newMode === 'register') {
@@ -110,7 +134,13 @@
         if (switchLink) switchLink.textContent = 'Đăng ký ngay';
         if (googleBtnText) googleBtnText.textContent = 'Google';
         this.stopOtpTimer();
-        this.setMessage('Đăng nhập để đồng bộ tiến độ giữa các thiết bị.', false);
+        if (recoveryUnavailable) {
+          this.setMessage('Khôi phục mật khẩu chưa được mở. Vui lòng liên hệ quản trị viên để được hỗ trợ.', true);
+        } else if (registrationDisabled) {
+          this.setMessage('Đăng ký học viên hiện chưa mở.', true);
+        } else {
+          this.setMessage('Đăng nhập để đồng bộ tiến độ giữa các thiết bị.', false);
+        }
       }
     },
     startOtpTimer() {
